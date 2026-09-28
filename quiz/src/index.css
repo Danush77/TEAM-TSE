@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  font-family: var(--font-body);
+}
+
+body {
+  margin: 0;
+  background: #0b0e14;
+  color: #e6e9ef;
+}
+
+.pointer-spotlight {
+  opacity: 0;
+  background: radial-gradient(280px circle at var(--pointer-x, -400px) var(--pointer-y, -400px), rgba(100, 211, 174, 0.11), transparent 72%);
+  transition: opacity 250ms ease;
+}
+
+@media (pointer: fine) {
+  .pointer-spotlight { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pointer-spotlight { transition: none; }
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: #2a2f3a; border-radius: 8px; }

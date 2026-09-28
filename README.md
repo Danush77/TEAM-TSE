@@ -4,6 +4,8 @@ A collaborative website for Trainee Software Engineers (TSE) to introduce
 themselves, track their learning, and practice real Git/GitHub workflows —
 built as a static site.
 
+The interactive React quiz app lives in `quiz/` and is built separately for deployment.
+
 ## What this is
 
 Every profile on the [Team](team.html) page is a real HTML/CSS page that
@@ -71,6 +73,22 @@ python3 -m http.server 8000
 ```
 
 Any static file server works — Python's is just built in on most machines.
+
+To run the quiz locally, open a second terminal and run:
+
+```bash
+cd quiz
+npm ci
+npm run dev
+```
+
+## GitHub Pages deployment
+
+The workflow in `.github/workflows/deploy-pages.yml` publishes the static site
+and builds the quiz into `/quiz/` whenever changes are pushed to `main`. In the
+repository's **Settings > Pages**, set **Build and deployment > Source** to
+**GitHub Actions**. The quiz uses relative asset paths so it works under the
+repository's GitHub Pages URL.
 
 ## How to contribute
 

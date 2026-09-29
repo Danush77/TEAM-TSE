@@ -30,12 +30,12 @@ body {
 }
 
 .main-container {
-    margin: 10px;
+    margin: 10px; 
     flex-direction: column;
 }
 
 .project-box {
-    background-color: white;
+    background-color: rgb(150, 147, 147);
     border-radius: 15px;
     margin-top: 20px;
     padding: 10px;
@@ -51,9 +51,6 @@ body {
     border: 1px solid black;
 }
 
-/* .project-image:hover{
-    transform: rotate(-3deg);
-} */
 .box-sub-container2 {
     flex-direction: column;
     column-gap: 1px;
@@ -68,9 +65,12 @@ body {
 .box-project-para {
     margin-block-start: 0.5em;
     margin-block-end: 0.5em;
+    font-family: "Shantell Sans", cursive;
+    font-size: 15px;
 }
 
 .box-project-button {
+    font-family: "Ribeye Marrow", serif;
     color: white;
     height: 30px;
     width: 80px;
@@ -101,6 +101,8 @@ body {
     animation: moveUpDown 2s infinite ease-in-out;
     margin-block-start: 0.5em;
     margin-block-end: 0.5em;
+    font-family: "Shantell Sans", cursive;
+    font-size: 12px;
 }
 
 @keyframes moveUpDown {

@@ -43,10 +43,23 @@ jobs:
             ./ _site/
 
       - name: Install quiz dependencies
-        run: npm ci --prefix quiz
+        working-directory: quiz
+        run: npm ci
 
       - name: Build quiz into the published site
-        run: npm run build --prefix quiz -- --outDir ../_site/quiz
+        working-directory: quiz
+        run: npm run build -- --outDir ../_site/quiz --emptyOutDir
+
+      - name: Verify compiled quiz output
+        working-directory: quiz
+        run: |
+          test -f ../_site/quiz/index.html
+          test -d ../_site/quiz/assets
+          grep -Eq '<script[^>]+src="\./assets/index-[^"]+\.js"' ../_site/quiz/index.html
+          if grep -q 'src/main.jsx' ../_site/quiz/index.html; then
+            echo "Quiz output still references the uncompiled JSX entry point."
+            exit 1
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

@@ -1,7 +1,8 @@
-# SkillCheck — Interactive Dev Quiz Platform
+# TSE Learning Hub — Courses and Practice
 
-React + Framer Motion quiz app covering 16 modules (Foundation + Advanced tracks).
-No backend — progress is stored in the browser via localStorage.
+React + Framer Motion course library covering 16 Foundation and Advanced modules.
+Course material is the primary experience; each module's quiz is a secondary self-check.
+No backend — lesson progress and quiz answers are stored in the browser via localStorage.
 
 ## Run locally
 ```
@@ -30,3 +31,10 @@ single placeholder question each (marked `// TODO`) so the app is fully playable
 they need to be expanded to ~10-15 questions the same way.
 
 Module metadata (title, icon, color, tagline) lives in `src/data/modules.js`.
+
+## Course material
+The home route is the course library. Shared course pages use `/course/:moduleId`; the previous `/study/:moduleId` path remains as an alias. Course data is registered in `src/data/course-catalog.js`, with lesson units stored by module. The reader keeps lesson content and examples in-page and saves completion locally.
+
+MySQL is the first populated course with 33 syllabus units, dedicated lesson routes, and four cumulative practice exams. Each topic exports its content from `src/data/courses/mysql/topics/<topic-id>.js`; the shared lesson page displays the standard sections for every module. Mini challenges live in the course's `activities/` folder and open as individual pages. The supplied lesson export is embedded in JavaScript modules, not loaded from a `.txt` file at runtime.
+
+To add another course, create its topic modules under `src/data/courses/<module-id>/topics/`, register lazy imports in that course's `index.js` and `src/data/courses/loaders.js`, and add its syllabus and status metadata to `src/data/course-catalog.js`. Use the section keys `whatIsIt`, `syntaxBreakdown`, `basicExample`, `goingDeeper`, `commonMistakes`, `edgeCaseSpotlight`, `tryThis`, `answerKey`, `quickRecap`, and `upNext`. Other modules keep the same reader shell and remain marked as pending until their lesson content is supplied. Practice quizzes remain at `/quiz/:moduleId`; practice exam answers do not run or get sent to a server.

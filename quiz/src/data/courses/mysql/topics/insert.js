@@ -1,0 +1,30 @@
+// Extracted lesson content for the insert topic.
+const lesson = {
+  "id": "insert",
+  "status": "full",
+  "sourceTitle": "INSERT",
+  "sourceDocuments": [
+    {
+      "title": "INSERT",
+      "part": 1,
+      "topicNumber": 2,
+      "difficulty": "Beginner",
+      "prerequisites": "create-table"
+    }
+  ],
+  "relatedTopicId": null,
+  "sections": {
+    "whatIsIt": "INSERT is how you add new rows (records) to a table. Think of a table like a spreadsheet — INSERT lets you add a new row of data. You specify which table you're adding to, which columns you're filling in, and what values go in those columns.\n\nReal-world analogy: Hiring a new employee means adding their information to your employee records. That's an INSERT.",
+    "syntaxBreakdown": "INSERT INTO table_name (column1, column2, column3, ...)\nVALUES (value1, value2, value3, ...);\nBreaking it down:\n\nINSERT INTO — The command that says \"I'm adding data\"\ntable_name — Which table you're adding to\n(column1, column2, ...) — Which columns you're filling (in order)\nVALUES — Keyword that introduces the actual data\n(value1, value2, ...) — The actual data values (must match the column order)\nKey rule: The number of values must match the number of columns you listed. If you list 3 columns, you must provide 3 values.",
+    "basicExample": "Let's add a new employee to the employees table.\n\nINSERT INTO employees (first_name, last_name, department_id, salary, hire_date, manager_id)\nVALUES ('Zara', 'Chen', 1, 87000.00, '2023-05-01', 10);\nWhat this does:\n\nAdds a new employee named Zara Chen\nAssigns her to department 1 (Engineering)\nSets her salary at $87,000\nRecords her hire date as May 1, 2023\nSets her manager as employee_id 10 (Jack Anderson)\nExpected output:\n\nQuery OK, 1 row affected\nTo verify it worked:\n\nSELECT * FROM employees WHERE first_name = 'Zara';\nemployee_id\tfirst_name\tlast_name\tdepartment_id\tsalary\thire_date\tmanager_id\n21\tZara\tChen\t1\t87000.00\t2023-05-01\t10",
+    "goingDeeper": "Inserting Multiple Rows at Once\nYou don't have to run INSERT once per row. You can add multiple rows in a single statement by listing multiple value sets separated by commas:\n\nINSERT INTO departments (department_name, location)\nVALUES \n    ('Research', 'Austin'),\n    ('Quality Assurance', 'Remote'),\n    ('Business Development', 'Miami');\nExpected output:\n\nQuery OK, 3 rows affected\nThis adds three new departments in one command. Much more efficient than three separate INSERTs.\n\nPause and Predict: How many rows will be in the departments table now? (Hint: There were originally 10.)\n\nAnswer\nInserting Without Specifying All Columns\nYou don't have to provide values for every column. If a column allows NULL or has a default value, you can skip it:\n\nINSERT INTO employees (first_name, last_name, hire_date)\nVALUES ('Jordan', 'Lee', '2023-06-15');\nWhat happens here:\n\nfirst_name, last_name, and hire_date are provided\ndepartment_id, salary, and manager_id are not provided, so they become NULL\nemployee_id is also not provided, but it's AUTO_INCREMENT, so MySQL assigns the next available number automatically",
+    "commonMistakes": "Mistake #1: Mismatched Number of Columns and Values\n-- WRONG\nINSERT INTO employees (first_name, last_name, salary)\nVALUES ('Alex', 'Taylor', 75000.00, 5);  -- 4 values but only 3 columns!\nWhy it fails: You listed 3 columns but provided 4 values. MySQL doesn't know where to put that extra 5.\n\nError message: Column count doesn't match value count at row 1\n\n-- CORRECT\nINSERT INTO employees (first_name, last_name, salary, department_id)\nVALUES ('Alex', 'Taylor', 75000.00, 5);\nMistake #2: Wrong Data Type\n-- WRONG\nINSERT INTO employees (first_name, last_name, salary)\nVALUES ('Morgan', 'Kim', 'sixty thousand');  -- Salary expects a number, not text!\nWhy it fails: The salary column is defined as DECIMAL (a number type), but you're trying to insert a string.\n\nError message: Incorrect decimal value: 'sixty thousand' for column 'salary'\n\n-- CORRECT\nINSERT INTO employees (first_name, last_name, salary)\nVALUES ('Morgan', 'Kim', 60000.00);\nMistake #3: Forgetting Quotes Around Strings\n-- WRONG\nINSERT INTO employees (first_name, last_name)\nVALUES (Riley, Parker);  -- MySQL thinks Riley and Parker are column names!\nWhy it fails: Without quotes, MySQL interprets Riley and Parker as identifiers (like column names), not as literal text values.\n\nError message: Unknown column 'Riley' in 'field list'\n\n-- CORRECT\nINSERT INTO employees (first_name, last_name)\nVALUES ('Riley', 'Parker');\nRule of thumb: Strings and dates need single quotes. Numbers don't.",
+    "edgeCaseSpotlight": "AUTO_INCREMENT Behavior\nWhen you insert a row into a table with an AUTO_INCREMENT column (like employee_id), you should not specify a value for that column. Let MySQL assign it automatically.\n\nWhat happens if you DO specify it?\n\nINSERT INTO employees (employee_id, first_name, last_name)\nVALUES (999, 'Test', 'User');\nThis works! But now you've \"used up\" ID 999. The next AUTO_INCREMENT value will be 1000, not 22 (the next sequential number).\n\nBest practice: Never specify AUTO_INCREMENT columns unless you're doing a data migration and need to preserve specific IDs. Let MySQL manage them.",
+    "tryThis": "Exercise 1 (Guided)\nAdd a new project called \"AI Research Initiative\" that started on January 1, 2024, has no end date yet, and has a budget of $600,000.\n\nHint\nExercise 2 (Independent)\nAdd yourself as an employee! Include your name, pick a department (use a department_id from 1-10), set your dream salary, and use today's date as the hire date. Set Alice (employee_id = 1) as your manager.",
+    "answerKey": "Exercise 1 Answer\nExercise 2 Answer",
+    "quickRecap": "• INSERT adds new rows to a table\n• You must match the number of columns with the number of values\n• Strings and dates need single quotes; numbers don't\n• You can skip columns that allow NULL or have defaults\n• Never specify AUTO_INCREMENT columns — let MySQL handle them",
+    "upNext": "Next topic: UPDATE → part1_03_update.md"
+  }
+}
+
+export default lesson

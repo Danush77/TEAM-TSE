@@ -1,0 +1,11 @@
+// Extracted practice activity from the supplied course export.
+const activity = {
+  "id": "mini-challenge-04",
+  "title": "Mini Challenge 4 — Topics 10-12",
+  "part": 1,
+  "difficulty": "Intermediate",
+  "prerequisites": "limit, aggregate-functions, group-by",
+  "content": "Mini Challenge 4 — LIMIT, Aggregate Functions, GROUP BY\r\nOverview\r\nApply your knowledge of result limiting, aggregation, and grouping to solve practical scenarios.\r\n\r\nChallenge 1: Top 5 Projects by Budget\r\nFind the 5 most expensive projects (highest budget). Show project_name and budget, sorted by budget descending.\r\n\r\nHint\r\nChallenge 2: Department Headcounts\r\nCount how many employees work in each department. Show department_id and employee_count, sorted by count (highest first). Only show departments with at least 2 employees.\r\n\r\nHint\r\nChallenge 3: Salary Statistics per Department\r\nFor each department, calculate:\r\n\r\nTotal number of employees\r\nAverage salary (rounded to 2 decimals)\r\nMinimum salary\r\nMaximum salary\r\nTotal payroll (sum of all salaries)\r\nShow department_id and all five metrics. Sort by average salary descending.\r\n\r\nHint\r\nChallenge 4: Project Assignment Statistics\r\nUsing the employee_projects table, find:\r\n\r\nHow many unique employees are assigned across all projects\r\nHow many unique projects have at least one employee assigned\r\nTotal hours allocated across all assignments\r\nAverage hours per assignment\r\nHint\r\nChallenge 5: Second and Third Highest Salaries\r\nFind the 2nd and 3rd highest unique salaries in the company. Show just the salary values, no names.\r\n\r\nHint\r\nAnswer Key\r\nChallenge 1 Answer\r\nChallenge 2 Answer\r\nChallenge 3 Answer\r\nChallenge 4 Answer\r\nChallenge 5 Answer\r\nKey Takeaways\r\n• LIMIT controls result size (perfect for \"top N\" queries)\r\n• Aggregate functions (COUNT, SUM, AVG, MIN, MAX) summarize data\r\n• GROUP BY splits data into categories before aggregating\r\n• DISTINCT counts unique values\r\n• OFFSET skips rows (useful with LIMIT for pagination)\r\n• Combine these tools for powerful analytical queries\r\n\r\nUp Next\r\nNext topic: HAVING vs WHERE → part1_13_having_vs_where.md\r\n\r\nLearn to filter grouped results!"
+}
+
+export default activity

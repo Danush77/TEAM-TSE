@@ -1,37 +1,39 @@
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Icon from './Icon'
-import ProgressRing from './ProgressRing'
 
-const item = {
-  hidden: { opacity: 0, y: 18 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 22 } },
-}
-
-export default function ModuleCard({ mod, progress }) {
-  const navigate = useNavigate()
+export default function ModuleCard({
+  mod,
+  progress,
+  courseReady = false,
+  syllabusAvailable = false,
+  lessonCount = 0,
+}) {
   const checkpoint = progress?.inProgress
   const hasCheckpoint = Boolean(checkpoint?.questions?.length)
-  const hasProgress = (progress?.attempts ?? 0) > 0 || hasCheckpoint
   const total = progress?.total ?? 0
   const best = progress?.best ?? 0
-  const checkpointTotal = checkpoint?.questions?.length ?? mod.questionCount
-  const answeredCount = hasCheckpoint ? Math.min(checkpoint.answers?.length ?? 0, checkpointTotal) : 0
-  const resumeQuestion = hasCheckpoint ? Math.min((checkpoint.index ?? 0) + 1, checkpointTotal) : 0
-  const percent = hasCheckpoint
-    ? Math.round((answeredCount / checkpointTotal) * 100)
-    : total ? Math.round((best / total) * 100) : 0
+  const quizStatus = hasCheckpoint
+    ? 'Quiz in progress'
+    : total
+      ? `Quiz best: ${best}/${total}`
+      : 'Quiz not started'
+  const courseStatus = courseReady
+    ? `${lessonCount} lessons`
+    : syllabusAvailable
+      ? 'Syllabus available'
+      : 'Course content pending'
+  const courseAction = courseReady
+    ? 'Open course'
+    : syllabusAvailable
+      ? 'View syllabus'
+      : 'Open course page'
 
   return (
-    <motion.button
-      variants={item}
+    <motion.article
       whileHover={{ y: -4, borderColor: `${mod.color}70`, boxShadow: `0 0 22px ${mod.color}24` }}
-      whileTap={{ scale: 0.99 }}
-      onClick={() => navigate(`/quiz/${mod.id}`)}
-      aria-label={hasCheckpoint ? `Resume ${mod.title} at question ${resumeQuestion} of ${checkpointTotal}` : `Start ${mod.title}`}
-      className="group relative h-full min-h-[164px] w-full box-border overflow-hidden rounded-lg border border-white/[0.12] bg-white/[0.035] p-4 text-left transition-colors hover:border-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60 sm:p-5"
+      className="group relative h-full min-h-[220px] w-full overflow-hidden rounded-xl border border-white/[0.12] bg-white/[0.035] p-4 transition-colors sm:p-5"
     >
-      <div className="relative z-10">
       <div className="flex items-start justify-between gap-3">
         <span
           className="flex h-10 w-10 items-center justify-center rounded-lg"
@@ -40,23 +42,25 @@ export default function ModuleCard({ mod, progress }) {
         >
           <Icon name={mod.icon} size={21} />
         </span>
-        {hasProgress && (
-          <span className="relative flex h-9 w-9 shrink-0 items-center justify-center" aria-label={hasCheckpoint ? `Progress ${answeredCount} of ${checkpointTotal}` : `Best score ${percent}%`}>
-            <ProgressRing percent={percent} color={mod.color} size={36} stroke={3} />
-            <span className="absolute text-[9px] font-semibold tabular-nums text-white/75">{percent}%</span>
-          </span>
-        )}
+        <span className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${courseReady || syllabusAvailable ? 'border-emerald-300/20 bg-emerald-300/[0.07] text-emerald-100/75' : 'border-white/10 bg-white/[0.035] text-white/45'}`}>
+          {courseStatus}
+        </span>
       </div>
 
-      <h3 className="mt-3.5 font-display text-sm font-semibold text-white/90">{mod.title}</h3>
-      <p className="mt-1 text-xs leading-relaxed text-white/50">{mod.tagline}</p>
+      <Link to={`/course/${mod.id}`} className="mt-3 block rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60">
+        <h3 className="font-display text-base font-semibold text-white/90 transition group-hover:text-white">{mod.title}</h3>
+        <p className="mt-1 min-h-9 text-xs leading-relaxed text-white/55">{mod.tagline}</p>
+        <span className="mt-2 inline-block text-sm font-semibold text-indigo-200 transition group-hover:text-indigo-100">
+          {courseAction} <span aria-hidden="true">&rarr;</span>
+        </span>
+      </Link>
 
-      <p className="mt-3.5 text-xs text-white/40">
-        {hasCheckpoint
-          ? `In progress: ${answeredCount}/${checkpointTotal}`
-          : hasProgress && total ? `Best: ${best}/${total}` : 'Not started'}
-      </p>
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
+        <span className="truncate text-[11px] text-white/45">{quizStatus}</span>
+        <Link to={`/quiz/${mod.id}`} className="shrink-0 rounded-md px-2 py-1 text-xs text-white/55 transition hover:bg-white/[0.06] hover:text-white/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white/60">
+          Practice quiz
+        </Link>
       </div>
-    </motion.button>
+    </motion.article>
   )
 }

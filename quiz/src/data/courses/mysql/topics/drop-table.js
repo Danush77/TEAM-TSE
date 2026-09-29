@@ -1,0 +1,30 @@
+// Extracted lesson content for the drop-table topic.
+const lesson = {
+  "id": "drop-table",
+  "status": "full",
+  "sourceTitle": "DROP TABLE",
+  "sourceDocuments": [
+    {
+      "title": "DROP TABLE",
+      "part": 1,
+      "topicNumber": 6,
+      "difficulty": "Beginner",
+      "prerequisites": "create-table, alter-table"
+    }
+  ],
+  "relatedTopicId": null,
+  "sections": {
+    "whatIsIt": "DROP TABLE completely deletes a table from your database. This removes the table structure AND all data inside it. Once dropped, the table no longer exists — it's not just empty, it's gone.\n\nReal-world analogy: DELETE removes files from a filing cabinet. DROP TABLE destroys the entire filing cabinet itself.",
+    "syntaxBreakdown": "DROP TABLE table_name;\nThat's it. Simple, powerful, and irreversible.",
+    "basicExample": "Let's drop the office_supplies table we created earlier:\n\nDROP TABLE office_supplies;\nWhat this does:\n\nRemoves the table structure (column definitions, constraints, everything)\nDeletes all rows of data in the table\nThe table name office_supplies is no longer in the database\nExpected output:\n\nQuery OK, 0 rows affected\nVerify it's gone:\n\nSHOW TABLES;\nYou won't see office_supplies anymore.\n\nTry to query it:\n\nSELECT * FROM office_supplies;\nError: Table 'company_db.office_supplies' doesn't exist",
+    "goingDeeper": "Dropping Multiple Tables at Once\nDROP TABLE table1, table2, table3;\nWhat this does:\n\nDrops all three tables in one command\nAll structures and all data are gone\nThe Safety Net: IF EXISTS\nDROP TABLE IF EXISTS office_supplies;\nWhat this does:\n\nIf the table exists, drop it\nIf it doesn't exist, do nothing (no error)\nWhy this matters:\n\nSafe for scripts that might run multiple times\nPrevents errors in automated deployment scripts\nCommon in migration files\nWithout IF EXISTS:\n\nDROP TABLE nonexistent_table;\nError: Unknown table 'company_db.nonexistent_table'\n\nWith IF EXISTS:\n\nDROP TABLE IF EXISTS nonexistent_table;\nOutput: Query OK, 0 rows affected, 1 warning — No error, just a warning you can ignore.\n\nRecreating After Drop\nYou can drop and immediately recreate a table (common pattern for resetting test data):\n\nDROP TABLE IF EXISTS test_data;\n\nCREATE TABLE test_data (\n    id INT PRIMARY KEY AUTO_INCREMENT,\n    value VARCHAR(50)\n);\n\nINSERT INTO test_data (value) VALUES ('Test 1'), ('Test 2');\nWhat this does:\n\nEnsures a clean slate by dropping any previous version\nCreates a fresh table with the current structure\nPopulates it with initial data\nPause and Predict: If you DROP a table and then CREATE it again with the same name, what happens to the AUTO_INCREMENT counter?\n\nAnswer",
+    "commonMistakes": "Mistake #1: Dropping a Table with Foreign Key References\n--  MIGHT FAIL\nDROP TABLE departments;\nWhy it might fail: The employees table has a foreign key pointing to departments. MySQL prevents you from dropping a referenced table because it would break the relationship.\n\nError message: Cannot drop table 'departments' referenced by a foreign key constraint\n\nSolutions:\n\nOption A: Drop the child table first\n\n-- CORRECT\nDROP TABLE employees;  -- Child table first\nDROP TABLE departments;  -- Parent table second\nOption B: Drop the foreign key constraint first\n\n-- CORRECT\nALTER TABLE employees\nDROP FOREIGN KEY employees_ibfk_1;  -- The constraint name (use SHOW CREATE TABLE to find it)\n\nDROP TABLE departments;  -- Now you can drop it\nOption C: Use CASCADE (advanced, not covered yet)\n\nMistake #2: Confusing DROP TABLE with DELETE\n-- These are NOT the same!\n\nDELETE FROM employees;  -- Removes all rows, table structure remains\nDROP TABLE employees;   -- Removes table structure AND all rows\nAfter DELETE:\n\nTable still exists\nYou can INSERT new rows\nTable structure (columns, constraints) is intact\nAfter DROP TABLE:\n\nTable doesn't exist\nYou can't INSERT anything (no table to insert into)\nMust CREATE TABLE again to use it\nMistake #3: No Backup Before Dropping (Catastrophic!)\n--  DANGEROUS without backup\nDROP TABLE employees;\nWhy it's catastrophic: DROP TABLE is permanent. No undo, no recovery (unless you have backups). All employee data is gone forever.\n\nBest practice:\n\n-- CORRECT\n-- First, back up the data\nCREATE TABLE employees_backup AS\nSELECT * FROM employees;\n\n-- Verify the backup\nSELECT COUNT(*) FROM employees_backup;\n\n-- NOW you can drop safely\nDROP TABLE employees;\n\n-- If you need to restore:\nCREATE TABLE employees LIKE employees_backup;  -- Copy structure\nINSERT INTO employees SELECT * FROM employees_backup;  -- Copy data",
+    "edgeCaseSpotlight": "Temporary Tables\nMySQL supports temporary tables that automatically drop when your session ends:\n\nCREATE TEMPORARY TABLE session_data (\n    id INT PRIMARY KEY,\n    data VARCHAR(100)\n);\n\n-- Use it like a normal table\nINSERT INTO session_data VALUES (1, 'Test');\nSELECT * FROM session_data;\n\n-- When you disconnect from MySQL, this table disappears automatically\nWhy temporary tables matter:\n\nPerfect for intermediate calculations\nNo need to explicitly DROP them\nWon't conflict with tables in other sessions (each session has its own copy)\nAutomatically cleaned up\nYou can still explicitly drop them:\n\nDROP TEMPORARY TABLE session_data;",
+    "tryThis": "Exercise 1 (Guided)\nCreate a table called temp_test with any structure you like, insert a row, then drop it safely (using IF EXISTS).\n\nHint\nExercise 2 (Independent)\nWe created a meeting_rooms table earlier. Before dropping it, create a backup table called meeting_rooms_backup, verify the backup has data, then drop the original meeting_rooms table.",
+    "answerKey": "Exercise 1 Answer\nExercise 2 Answer",
+    "quickRecap": "• DROP TABLE permanently deletes a table and all its data\n• Use IF EXISTS to avoid errors in scripts\n• Can't drop tables referenced by foreign keys without dropping children first\n• DROP is NOT the same as DELETE — DROP removes the entire table\n• Always back up before dropping production tables",
+    "upNext": "Time for a Challenge! → Mini Challenge 2"
+  }
+}
+
+export default lesson

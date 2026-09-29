@@ -1,0 +1,146 @@
+function topic(number, title, category, exam) {
+  const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  return { number, id: `${number}-${id}`, title, category, badge: exam, syllabusOnly: true }
+}
+
+function topicRange(start, exam, rows) {
+  return rows.map(([title, category], index) => topic(start + index, title, category, exam))
+}
+
+export const HTML_CSS_JAVASCRIPT_SYLLABUS = {
+  title: 'HTML + CSS + JavaScript',
+  subtitle: 'A guided sequence from web foundations and browser skills through JavaScript, React, databases, and Node.js.',
+  curriculumTitle: 'Four-part web development curriculum',
+  durationLabel: 'Study duration to be defined',
+  entryLabel: 'topics',
+  topicDetailsLabel: 'Topic category',
+  syllabusHint: 'Browse each topic in sequence, then use the exam plan to review cumulative ranges.',
+  syllabusOnly: true,
+  overview: [
+    ['Module number', 'Module 4'],
+    ['Status', 'Syllabus Defined'],
+    ['Study duration', 'To be defined'],
+    ['Attempts', 'Up to 3 per part'],
+    ['Exam format', 'Live coding and explanation via a recorded Teams call'],
+    ['OneDrive material', 'Link to be added when available'],
+  ],
+  sequenceTitle: 'Course sequence and study resources',
+  sequenceNote: 'Follow these four learning sources in order. They are reference courses; the 54 syllabus topics below stay on this page.',
+  sequence: [
+    { title: 'Foundations | The Odin Project', kind: 'Course', href: 'https://www.theodinproject.com/paths/foundations/courses/foundations' },
+    { title: 'Build web pages with HTML and CSS for beginners — Training | Microsoft Learn', kind: 'Training', href: 'https://learn.microsoft.com/en-us/training/paths/build-web-pages-html-css-for-beginners/' },
+    { title: 'Frontend Web Development Bootcamp Course (JavaScript, HTML, CSS) — freeCodeCamp, via Class Central', kind: 'Course', href: 'https://www.classcentral.com/classroom/freecodecamp-frontend-web-development-bootcamp-course-javascript-html-css-104805' },
+    { title: 'Full Stack JavaScript | The Odin Project', kind: 'Course', href: 'https://www.theodinproject.com/paths/full-stack-javascript' },
+  ],
+  examPlanTitle: 'Five two-week practice exams',
+  examPlanIntro: 'Use these five in-app practice exams to review the syllabus in two-week blocks. The official assessment allows up to three attempts per exam.',
+  examPlanOverviewHref: '/study/html-css-javascript/exams',
+  examPlan: [
+    { title: 'Exam 1', weeks: 'Weeks 1–2', topics: 'Topics 1–14', courseParts: 'Part 1', href: '/study/html-css-javascript/exams/exam-1' },
+    { title: 'Exam 2', weeks: 'Weeks 3–4', topics: 'Topics 15–24', courseParts: 'Parts 2 and 3', href: '/study/html-css-javascript/exams/exam-2' },
+    { title: 'Exam 3', weeks: 'Weeks 5–6', topics: 'Topics 25–34', courseParts: 'Part 3', href: '/study/html-css-javascript/exams/exam-3' },
+    { title: 'Exam 4', weeks: 'Weeks 7–8', topics: 'Topics 35–44', courseParts: 'Part 3', href: '/study/html-css-javascript/exams/exam-4' },
+    { title: 'Exam 5', weeks: 'Weeks 9–10', topics: 'Topics 45–54', courseParts: 'Parts 3 and 4', href: '/study/html-css-javascript/exams/exam-5' },
+  ],
+  parts: [
+    {
+      id: 'part-1',
+      label: 'Part 1',
+      title: 'Foundations (The Odin Project)',
+      summary: 'Start with how the web works, then build HTML, CSS, and JavaScript foundations through guided projects.',
+      examLabel: 'Exam 1 · Weeks 1–2',
+      topics: [
+        ...topicRange(1, 'Exam 1', [
+          ['Introduction to Web Development', 'Overview'],
+          ['Prerequisites: how the web works, installations, text editors, command line basics', 'Overview'],
+          ['Git Basics', 'Git'],
+          ['HTML Foundations (elements, tags, boilerplate, text, lists, links/images)', 'HTML'],
+          ['Project: Recipes', 'HTML'],
+          ['CSS Foundations (cascade, inspecting HTML/CSS, box model, block and inline)', 'CSS'],
+          ['Flexbox (introduction, growing/shrinking, axes, alignment)', 'CSS'],
+          ['Project: Landing Page', 'CSS'],
+          ['JavaScript Basics (variables, operators, data types, conditionals, functions)', 'JavaScript'],
+          ['Project: Rock Paper Scissors', 'JavaScript'],
+          ['Clean Code, Loops and Arrays, DOM Manipulation and Events', 'JavaScript'],
+          ['Project: Etch-a-Sketch', 'JavaScript'],
+          ['Object Basics', 'JavaScript'],
+          ['Project: Calculator', 'JavaScript'],
+        ]),
+      ],
+    },
+    {
+      id: 'part-2',
+      label: 'Part 2',
+      title: 'Build web pages with HTML and CSS for beginners (Microsoft Learn)',
+      summary: 'Practise creating a webpage, styling it with CSS, and applying basic web accessibility.',
+      examLabel: 'Exam 2 · Weeks 3–4 (continues in Part 3)',
+      topics: topicRange(15, 'Exam 2', [
+        ['Build your first HTML webpage', 'HTML'],
+        ['Use CSS styles in a webpage', 'CSS'],
+        ['Learn the basics of web accessibility', 'HTML / CSS'],
+      ]),
+    },
+    {
+      id: 'part-3',
+      label: 'Part 3',
+      title: 'Frontend Web Development Bootcamp (freeCodeCamp, via Class Central)',
+      summary: 'Continue JavaScript practice, then work through browser APIs and projects in JavaScript, HTML, and CSS. Topics in this part are assessed across Exams 2–5; use the exam plan below for the exact ranges.',
+      topics: [
+        ...topicRange(18, 'Exam 2', [
+          ['Your first JavaScript program', 'JavaScript'],
+          ['What is JavaScript?', 'JavaScript'],
+          ['JavaScript variables', 'JavaScript'],
+          ['Basic JavaScript challenges', 'JavaScript'],
+          ['JavaScript operators', 'JavaScript'],
+          ['5 more JavaScript challenges', 'JavaScript'],
+          ['JavaScript functions, conditionals, loops', 'JavaScript'],
+        ]),
+        ...topicRange(25, 'Exam 3', [
+          ['25 Beginner JavaScript practice problems', 'JavaScript'],
+          ['Built-in JavaScript methods', 'JavaScript'],
+          ['Callback functions', 'JavaScript'],
+          ['JavaScript primitives', 'JavaScript'],
+          ['JavaScript Dates', 'JavaScript'],
+          ['Regular Expressions', 'JavaScript'],
+          ['JavaScript String methods', 'JavaScript'],
+          ['JavaScript Array methods', 'JavaScript'],
+          ['Math utilities with JavaScript', 'JavaScript'],
+          ['Error types and other JavaScript concepts', 'JavaScript'],
+        ]),
+        ...topicRange(35, 'Exam 4', [
+          ['10 Beginner / Intermediate JavaScript practice problems', 'JavaScript'],
+          ['HTML Crash Course', 'HTML'],
+          ['"About me page" HTML challenge', 'HTML'],
+          ['Document Object Model (DOM)', 'JavaScript / HTML'],
+          ['HTML + JavaScript "Meme Generator" challenge', 'JavaScript / HTML'],
+          ['CSS Crash Course', 'CSS'],
+          ['The CSS Box Model', 'CSS'],
+          ['Most common CSS properties', 'CSS'],
+          ['Frontend Mentor CSS "Pricing Card" challenge', 'CSS'],
+          ['Introduction to responsive web design', 'CSS'],
+        ]),
+        ...topicRange(45, 'Exam 5', [
+          ['CSS Flexbox Crash Course', 'CSS'],
+          ['Frontend Mentor CSS Flexbox "Testimonials" challenge', 'CSS'],
+          ['Final thoughts and next steps', 'Overview'],
+        ]),
+      ],
+    },
+    {
+      id: 'part-4',
+      label: 'Part 4',
+      title: 'Full Stack JavaScript (The Odin Project)',
+      summary: 'Extend the foundations into intermediate and advanced front-end work, React, databases, Node.js, and career preparation.',
+      examLabel: 'Exam 5 · Weeks 9–10 (continues from Part 3)',
+      topics: topicRange(48, 'Exam 5', [
+        ['Intermediate HTML and CSS', 'HTML / CSS'],
+        ['JavaScript (DOM manipulation, OOP, fetching data from APIs)', 'JavaScript'],
+        ['Advanced HTML and CSS', 'CSS'],
+        ['React', 'JavaScript / React'],
+        ['Databases (relational databases, SQL)', 'Databases'],
+        ['NodeJS (Express, PostgreSQL)', 'Node.js'],
+        ['Getting Hired', 'Overview'],
+      ]),
+    },
+  ],
+}

@@ -1,0 +1,75 @@
+function block(number, id, title, keyTopics, options = {}) {
+  const hours = options.hours ?? 16
+  return {
+    number,
+    id,
+    title,
+    category: `Block ${number}`,
+    keyTopics,
+    hours,
+    badge: `${hours} hours`,
+    capstone: options.capstone || '',
+    notes: options.notes || '',
+    studyFiles: options.studyFiles || [],
+    syllabusOnly: true,
+  }
+}
+
+export const GIT_SYLLABUS = {
+  title: 'Git',
+  subtitle: 'A four-week, 160-hour path from local Git basics to professional collaboration and delivery.',
+  curriculumTitle: 'Foundations through team workflows',
+  durationLabel: '4 weeks · 160 study hours',
+  entryLabel: 'blocks',
+  topicDetailsLabel: 'Key topics',
+  syllabusOnly: true,
+  parts: [
+    {
+      id: 'part-1',
+      label: 'Weeks 1–2',
+      title: 'Foundations & Local Workflow',
+      summary: 'Build a reliable local workflow, work with remotes, learn branches, and practise resolving merge conflicts.',
+      examLabel: 'Part 1 Exam',
+      hours: 80,
+      entryLabel: 'blocks',
+      topics: [
+        block(1, 'setup-local-workflows', 'Setup & Local Workflows', ['git init', 'git clone', 'git add', 'git commit', 'git status', 'git log', 'git diff', '.gitignore basics'], { studyFiles: ['Setup & Basics', 'Local Workflow'] }),
+        block(2, 'remote-collaboration', 'Remote Collaboration', ['git push', 'git pull', 'git fetch', 'remote origins', 'GitHub account setup'], { studyFiles: ['Remote Collaboration'] }),
+        block(3, 'branching-fundamentals', 'Branching Fundamentals', ['Create and switch branches', 'Merge basics', 'Branch naming strategy'], { studyFiles: ['Branching & Merging'] }),
+        block(4, 'merge-conflicts', 'Merge Conflicts', ['Identify conflicts', 'Resolve conflicts', 'Conflict best practices'], { studyFiles: ['Fixing Mistakes', 'Branching & Merging'] }),
+        block(5, 'assessment', 'Assessment', ['Review and consolidate Blocks 1–4'], { capstone: 'Task Management App with full Git workflow', notes: 'Assessed by a senior.', studyFiles: ['Weeks 1–2 Curriculum'] }),
+      ],
+    },
+    {
+      id: 'part-2',
+      label: 'Weeks 3–4',
+      title: 'Advanced Workflows & Collaboration',
+      summary: 'Use Git with VS Code, manage advanced history, review pull requests, and apply team collaboration practices.',
+      examLabel: 'Part 2 Exam',
+      hours: 80,
+      entryLabel: 'blocks',
+      topics: [
+        block(6, 'git-vscode-stash', 'Git + VS Code & Stash', ['VS Code Git integration', 'git stash', 'git stash pop', 'GUI vs CLI comparison'], { studyFiles: ['VSCode & Stash Guide'] }),
+        block(7, 'rebase-advanced', 'Rebase & Advanced Workflows', ['git rebase', 'Interactive rebase', 'git cherry-pick'], { studyFiles: ['Advanced Workflows'] }),
+        block(8, 'pull-requests-review', 'Pull Requests & Review', ['Create pull requests', 'Code review process', 'Approvals and merges on GitHub'], { studyFiles: ['Remote Collaboration'] }),
+        block(9, 'team-collaboration', 'Team Collaboration', ['Real team scenarios', 'Branch protection rules', 'Commit message conventions'], { studyFiles: ['Advanced Workflows'] }),
+        block(10, 'final-capstone', 'Final Capstone', ['Review and consolidate Blocks 6–9'], { capstone: 'Full-Stack Note-Taking App with professional Git workflow', notes: 'Final assessment.', studyFiles: ['Weeks 3–4 Curriculum'] }),
+      ],
+    },
+  ],
+  resources: [
+    { title: 'Official Study Guide', kind: 'Guide' },
+    { title: 'Cheat Sheet & Practice', kind: 'Guide' },
+    { title: 'Vi Quick Guide', kind: 'Guide' },
+    { title: 'Student Worksheet', kind: 'Guide' },
+    { title: 'Part 1 Exam', kind: 'Exam' },
+    { title: 'Part 2 Exam', kind: 'Exam' },
+    { title: 'Git Official Book (Pro Git)', kind: 'Website' },
+    { title: 'GitHub Guides', kind: 'Website' },
+    { title: 'Git Cheat Sheet (GitHub Education)', kind: 'PDF' },
+    { title: 'Oh My Git (Interactive Game)', kind: 'Website' },
+    { title: 'A Grip on Git (visual guide)', kind: 'Website' },
+    { title: 'YouTube: Git for Beginners', kind: 'Video' },
+    { title: 'YouTube: Git Tutorial', kind: 'Video' },
+  ],
+}

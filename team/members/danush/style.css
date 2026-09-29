@@ -209,7 +209,6 @@ body {
     background: rgba(255, 255, 255, 0.12);
 
     backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
 
     border-radius: 25px;
 
@@ -292,46 +291,3 @@ body {
     color: #f4f5fc;
 }
 
-
-/* =========================
-   MOBILE RESPONSIVE
-========================= */
-
-@media (max-width: 768px) {
-
-    .header-container {
-        padding: 15px 20px;
-    }
-
-    .container3 {
-        flex-direction: column;
-    }
-
-    .skills,
-    .Projects {
-        width: 100%;
-    }
-
-    .sub-container1 {
-        width: 90%;
-        padding: 20px;
-    }
-
-    .about p {
-        font-size: 14px;
-    }
-
-    .main-container {
-        width: 160px;
-        height: 160px;
-    }
-
-    .name-circle {
-        width: 110px;
-        height: 110px;
-    }
-
-    .name-circle h1 {
-        font-size: 32px;
-    }
-}

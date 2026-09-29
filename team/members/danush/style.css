@@ -1,0 +1,293 @@
+
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+body {
+    min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #f4f5fc;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(30, 25, 80, 0.90),
+            rgba(83, 70, 189, 0.70)
+        ),
+        url("images/971.jpg");
+
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    width: 100%;
+    padding: 20px 40px;
+}
+
+.container1,
+.container2 {
+    width: 50%;
+}
+
+.container1 a,
+.container2 a {
+    color: #f4f5fc;
+    text-decoration: none;
+
+    font-size: 16px;
+    font-weight: 500;
+
+    transition: 0.3s ease;
+}
+
+.container2 {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.container1 a:hover,
+.container2 a:hover {
+    color: #d8d3ff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.container1 a:active,
+.container2 a:active {
+    opacity: 0.6;
+}
+
+
+.main-container {
+    width: 180px;
+    height: 180px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    margin: 40px auto 15px;
+
+    border: 1px solid rgba(255, 255, 255, 0.3);
+
+    background: rgba(255, 255, 255, 0.12);
+
+    backdrop-filter: blur(12px);
+
+    border-radius: 50%;
+
+    box-shadow:
+        0 10px 35px rgba(0, 0, 0, 0.3),
+        0 0 30px rgba(145, 135, 245, 0.25);
+
+    transition: 0.3s ease;
+}
+
+.main-container:hover {
+    transform: translateY(-5px);
+}
+
+
+.name-circle {
+    width: 125px;
+    height: 125px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    border-radius: 50%;
+
+    background: linear-gradient(
+        135deg,
+        #5346BD,
+        #9187F5
+    );
+
+    box-shadow:
+        0 0 25px rgba(145, 135, 245, 0.6);
+
+    border: 3px solid rgba(255, 255, 255, 0.25);
+}
+
+.name-circle h1 {
+    font-size: 38px;
+    color: white;
+    letter-spacing: 2px;
+}
+
+
+.name-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    margin-bottom: 25px;
+
+    color: white;
+}
+
+.name-container h3 {
+    font-size: 25px;
+    letter-spacing: 1px;
+}
+
+
+.sub-container1 {
+    width: 90%;
+    max-width: 950px;
+
+    margin: 0 auto 30px;
+    padding: 30px;
+
+    text-align: center;
+
+    border: 1px solid rgba(255, 255, 255, 0.25);
+
+    background: rgba(255, 255, 255, 0.12);
+
+    backdrop-filter: blur(12px);
+
+    border-radius: 25px;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+
+    transition: 0.3s ease;
+}
+
+.sub-container1:hover {
+    background: rgba(255, 255, 255, 0.17);
+}
+
+.sub-container1 h2 {
+    margin-bottom: 15px;
+
+    font-size: 25px;
+    color: white;
+}
+
+.about {
+    padding: 5px 10px;
+}
+
+.about p {
+    line-height: 1.7;
+    font-size: 16px;
+    color: #e8e6f8;
+}
+
+
+.container3 {
+    display: flex;
+
+    width: 90%;
+    max-width: 1100px;
+
+    margin: 0 auto 40px;
+
+    gap: 20px;
+}
+
+.skills,
+.Projects {
+    flex: 1;
+
+    padding: 25px;
+
+    border: 1px solid rgba(255, 255, 255, 0.25);
+
+    background: rgba(255, 255, 255, 0.12);
+
+    backdrop-filter: blur(12px);
+
+    border-radius: 25px;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+
+    transition: 0.3s ease;
+}
+
+.skills:hover,
+.Projects:hover {
+    transform: translateY(-5px);
+
+    background: rgba(255, 255, 255, 0.18);
+}
+
+
+.skills h2,
+.Projects h2 {
+    margin-bottom: 20px;
+
+    text-align: center;
+
+    font-size: 24px;
+    color: white;
+}
+
+
+
+.sub-container2,
+.sub-container3 {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+
+.a,
+.b,
+.c,
+.d,
+.e,
+.f,
+.g,
+.h {
+    padding: 12px 15px;
+
+    border-radius: 12px;
+
+    background: rgba(255, 255, 255, 0.08);
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+
+    transition: 0.3s ease;
+}
+
+.a:hover,
+.b:hover,
+.c:hover,
+.d:hover,
+.e:hover,
+.f:hover,
+.g:hover,
+.h:hover {
+    background: rgba(255, 255, 255, 0.2);
+
+    transform: translateX(5px);
+}
+
+.a h4,
+.b h4,
+.c h4,
+.d h4,
+.e h4,
+.f h4,
+.g h4,
+.h h4 {
+    font-size: 14px;
+    font-weight: 500;
+    color: #f4f5fc;
+}
+

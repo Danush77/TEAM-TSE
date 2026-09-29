@@ -1,0 +1,130 @@
+*{
+    padding: 0;
+    margin: 0;
+}
+.whole-page{
+    background-color: #F5EBD0;
+    width: 100%;
+    height: 100vh;
+}
+.main-container{
+    
+}
+.name-container{
+    background-color: #F5EBD0;
+    color: #7F011F;
+    width: 307px;
+    margin-left: 100px;
+    margin-top: 4px;
+}
+.links{
+    display: flex;
+    justify-content: space-between;
+    color: darkblue;
+    font-size: large;
+    margin-top: 10px;
+}
+.details-container{
+    display: flex;
+    height: 500px;
+    margin-top: 10px;
+    background-color: lightgreen;
+    justify-content: center;
+    align-items: center;
+}
+.profile-container{
+    height: 450px;
+    width: 450px;
+    margin-left: 60px;
+    background-color: whitesmoke;
+    border-radius: 50px;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+#h3-1{
+    color: sandybrown;
+}
+.profile-icons{
+    width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+    padding-top: 25px;
+}
+.profile-icons .icons{
+    width: 45px;
+    height: 45px;
+}
+.profile-container img{
+    border-radius: 150px;
+    height: 150px;
+    width: 150px;
+}
+.about-me{
+    padding-left: 40px;
+    padding-right: 40px;
+    text-align: start;
+    color: darkorchid;
+    font-size: large;
+}
+.projects-container{
+    display: flex;
+    flex-direction: column;
+    margin-left: 50px;
+    margin-right: 50px;
+    height: 100px;
+    margin-top: 15px;
+}
+.projects-header{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: red;
+}
+.projects-list .prlist{
+    background-color: #2C1F33;
+    color: #B9A38B;
+    margin-top: 8px;
+    font-size: large;
+    border-radius: 10px;
+    border: 1px solid darkgreen;
+    height: 25px;
+    width: 120px;
+    text-align: center;
+}
+.prlist:hover{
+    background-color: gray;
+}
+.courses-container{
+    display: flex;
+    flex-direction: column;
+    height: 100px;
+    margin-top: 15px;
+    margin-left: 50px;
+    margin-right: 50px;
+}
+.courses-header{
+    display: flex;
+    justify-content: center;
+    color: red;
+}
+.courses-list{
+    display: flex;
+    justify-content: space-evenly;
+}
+.courses-list .crlist{
+    margin-top: 8px;
+    color: #FFD700;
+    background-color: #0A192F;
+    font-size: large;
+    border-radius: 10px;
+    border: 1px solid #0A192F;
+    height: 25px;
+    width: 150px;
+    text-align: center;
+}
+.crlist:hover{
+    background-color: burlywood;
+}

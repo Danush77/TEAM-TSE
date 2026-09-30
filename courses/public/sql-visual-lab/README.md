@@ -14,9 +14,9 @@ python -m http.server 8001
 ```
 
 Then open <http://localhost:8001/>. The lab also appears at
-`/sql-visual-lab/` while the quiz app's Vite development server is running.
+`/sql-visual-lab/` while the course app's Vite development server is running.
 The GitHub Pages deployment copies this folder from Vite's `public/` directory
-to `/quiz/sql-visual-lab/`.
+to `/courses/sql-visual-lab/`.
 
 The SQL.js and node-sql-parser files are pinned local copies in `vendor/`;
 `worker.js` tries those first and has version-pinned CDN fallbacks. The SQL

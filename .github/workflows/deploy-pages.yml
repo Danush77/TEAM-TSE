@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: quiz/package-lock.json
+          cache-dependency-path: courses/package-lock.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
@@ -38,35 +38,35 @@ jobs:
           rsync -a \
             --exclude='/.git/' \
             --exclude='/.github/' \
-            --exclude='/quiz/' \
+            --exclude='/courses/' \
             --exclude='/_site/' \
             ./ _site/
 
-      - name: Install quiz dependencies
-        working-directory: quiz
+      - name: Install course app dependencies
+        working-directory: courses
         run: npm ci
 
-      - name: Build quiz into the published site
-        working-directory: quiz
-        run: npm run build -- --outDir ../_site/quiz --emptyOutDir
+      - name: Build course app into the published site
+        working-directory: courses
+        run: npm run build -- --outDir ../_site/courses --emptyOutDir
 
-      - name: Verify compiled quiz output
-        working-directory: quiz
+      - name: Verify compiled course output
+        working-directory: courses
         run: |
-          test -f ../_site/quiz/index.html
-          test -d ../_site/quiz/assets
-          test -f ../_site/quiz/sql-visual-lab/index.html
-          test -f ../_site/quiz/sql-visual-lab/app.js
-          test -f ../_site/quiz/sql-visual-lab/engine.js
-          test -f ../_site/quiz/sql-visual-lab/worker.js
-          test -f ../_site/quiz/sql-visual-lab/vendor/sql-wasm.js
-          test -f ../_site/quiz/sql-visual-lab/vendor/sql-wasm.wasm
-          test -f ../_site/quiz/sql-visual-lab/vendor/mysql.umd.js
-          test -f ../_site/quiz/sql-visual-lab/schema.sql
-          test -f ../_site/quiz/sql-visual-lab/challenges.json
-          grep -Eq '<script[^>]+src="\./assets/index-[^"]+\.js"' ../_site/quiz/index.html
-          if grep -q 'src/main.jsx' ../_site/quiz/index.html; then
-            echo "Quiz output still references the uncompiled JSX entry point."
+          test -f ../_site/courses/index.html
+          test -d ../_site/courses/assets
+          test -f ../_site/courses/sql-visual-lab/index.html
+          test -f ../_site/courses/sql-visual-lab/app.js
+          test -f ../_site/courses/sql-visual-lab/engine.js
+          test -f ../_site/courses/sql-visual-lab/worker.js
+          test -f ../_site/courses/sql-visual-lab/vendor/sql-wasm.js
+          test -f ../_site/courses/sql-visual-lab/vendor/sql-wasm.wasm
+          test -f ../_site/courses/sql-visual-lab/vendor/mysql.umd.js
+          test -f ../_site/courses/sql-visual-lab/schema.sql
+          test -f ../_site/courses/sql-visual-lab/challenges.json
+          grep -Eq '<script[^>]+src="\./assets/index-[^"]+\.js"' ../_site/courses/index.html
+          if grep -q 'src/main.jsx' ../_site/courses/index.html; then
+            echo "Course output still references the uncompiled JSX entry point."
             exit 1
           fi
 

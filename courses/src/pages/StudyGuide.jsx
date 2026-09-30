@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getModule } from '../data/modules'
 import { getCourseSyllabus } from '../data/course-catalog'
 import { getSqlVisualLabHref } from '../lib/paths'
+import { appStorageKey } from '../lib/storage'
 
 function readCompletedTopics(progressKey) {
   try {
@@ -42,7 +43,7 @@ function resourceGroup(resource) {
 }
 
 function CourseReader({ module, course }) {
-  const progressKey = `quizapp:study:${module.id}:v1`
+  const progressKey = appStorageKey(`study:${module.id}:v1`)
   const [completed] = useState(() => readCompletedTopics(progressKey))
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')

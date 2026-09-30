@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { HTML_JS_EXAMS, HTML_JS_EXAM_POLICY } from '../data/html-css-javascript-practice-exams'
+import { appStorageKey } from '../lib/storage'
 
 const examsPath = '/study/html-css-javascript/exams'
 const coursePath = '/course/html-css-javascript'
 
 function readDrafts(examId) {
   try {
-    const saved = JSON.parse(localStorage.getItem(`quizapp:html-js-mock:${examId}`))
+    const saved = JSON.parse(localStorage.getItem(appStorageKey(`html-js-mock:${examId}`)))
     return saved && typeof saved === 'object' ? saved : {}
   } catch {
     return {}
@@ -115,7 +116,7 @@ function ExamWorksheet({ exam }) {
     const updated = { ...drafts, [taskId]: value }
     setDrafts(updated)
     try {
-      localStorage.setItem(`quizapp:html-js-mock:${exam.id}`, JSON.stringify(updated))
+      localStorage.setItem(appStorageKey(`html-js-mock:${exam.id}`), JSON.stringify(updated))
     } catch {
       // Keep the current work in memory if browser storage is unavailable.
     }

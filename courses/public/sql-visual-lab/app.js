@@ -84,6 +84,7 @@ class SqlWorkerClient {
     this.worker = null
     this.pending = new Map()
     this.nextRequestId = 1
+    this.operationGeneration = 0
     this.readyPromise = null
     this.isReady = false
     this.restarting = false
@@ -107,10 +108,25 @@ class SqlWorkerClient {
     return true
   }
 
-  async request(type, payload = {}, timeout = QUERY_TIMEOUT_MS) {
-    if (this.readyPromise) await this.readyPromise
-    if (!this.worker || !this.isReady) throw new Error('The SQL engine is not ready. Use Retry engine to restart it.')
+  async request(type, payload = {}, timeout = QUERY_TIMEOUT_MS, operation = this.operationGeneration) {
+    await this.waitUntilReady()
+    if (operation !== this.operationGeneration) {
+      const error = new Error('Query cancelled. The SQL engine is restarting.')
+      error.name = 'AbortError'
+      throw error
+    }
     return this.sendRaw(type, payload, timeout)
+  }
+
+  async waitUntilReady() {
+    while (this.readyPromise) {
+      const readiness = this.readyPromise
+      await readiness
+      if (readiness !== this.readyPromise) continue
+      if (this.worker && this.isReady) return
+      break
+    }
+    throw new Error('The SQL engine is not ready. Use Retry engine to restart it.')
   }
 
   sendRaw(type, payload, timeout) {
@@ -123,7 +139,7 @@ class SqlWorkerClient {
           : 'The SQL engine took too long to respond. Retry the engine and try again.')
         error.code = type === 'run' ? 'TIMEOUT' : 'ENGINE_TIMEOUT'
         reject(error)
-        this.restart(error)
+        if (type !== 'init') this.restart(error)
       }, timeout)
       this.pending.set(requestId, { resolve, reject, timer, type })
       this.worker.postMessage({ requestId, type, payload })
@@ -145,6 +161,7 @@ class SqlWorkerClient {
   }
 
   cancel() {
+    this.operationGeneration += 1
     const error = new Error('Query cancelled. The SQL engine is restarting.')
     error.name = 'AbortError'
     this.restart(error)
@@ -171,6 +188,7 @@ class SqlWorkerClient {
   restart(reason) {
     if (this.restarting) return this.readyPromise
     this.restarting = true
+    this.operationGeneration += 1
     this.worker?.terminate()
     this.worker = null
     this.isReady = false
@@ -484,12 +502,13 @@ async function runQuery({ checkChallenge = false } = {}) {
   setRunningState(true)
   clearDisplayedResults('Running query in the isolated SQL worker…')
   const startedAt = performance.now()
+  const operation = workerClient.operationGeneration
   try {
-    const result = await workerClient.request('run', { sql })
+    const result = await workerClient.request('run', { sql }, QUERY_TIMEOUT_MS, operation)
     const elapsed = performance.now() - startedAt
     let stepPlan = { available: false, steps: [], reason: inspection.reason || 'Step view not available for this query yet.' }
     if (inspection.ast && inspection.visualizationAvailable) {
-      stepPlan = await buildExecutionSteps(parser, inspection.ast, (statement) => workerClient.request('run', { sql: statement }))
+      stepPlan = await buildExecutionSteps(parser, inspection.ast, (statement) => workerClient.request('run', { sql: statement }, QUERY_TIMEOUT_MS, operation))
     }
 
     lastSuccessfulRun = { sql, result, ast: inspection.ast, stepPlan, elapsed }

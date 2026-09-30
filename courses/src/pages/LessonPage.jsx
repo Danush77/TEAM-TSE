@@ -4,6 +4,7 @@ import { getModule } from '../data/modules'
 import { getCourseContent } from '../data/course-catalog'
 import { loadCourseTopic } from '../data/courses/loaders'
 import LessonContent, { LESSON_SECTIONS } from '../components/LessonContent'
+import { appStorageKey } from '../lib/storage'
 
 function readCompletedTopics(progressKey) {
   try {
@@ -178,7 +179,7 @@ export default function LessonPage() {
   const [mobileTopicsOpen, setMobileTopicsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [activeSection, setActiveSection] = useState('whatIsIt')
-  const progressKey = `quizapp:study:${moduleId}:v1`
+  const progressKey = appStorageKey(`study:${moduleId}:v1`)
   const [completed, setCompleted] = useState(() => readCompletedTopics(progressKey))
 
   useEffect(() => {

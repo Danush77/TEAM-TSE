@@ -35,7 +35,7 @@ Module metadata (title, icon, color, tagline) lives in `src/data/modules.js`.
 ## Course material
 The home route is the course library. Shared course pages use `/course/:moduleId`; the previous `/study/:moduleId` path remains as an alias. Course data is registered in `src/data/course-catalog.js`, with lesson units stored by module. The reader keeps lesson content and examples in-page and saves completion locally.
 
-The standalone SQL Visual Learning Lab lives in `public/sql-visual-lab/` and is served at `/sql-visual-lab/` during development and `/quiz/sql-visual-lab/` after deployment. It runs a small read-only sample database in the browser and visualizes common MySQL-style SELECT stages. See its [README](public/sql-visual-lab/README.md) for local serving instructions, challenges, and SQL dialect limitations.
+The standalone SQL Visual Learning Lab lives in `public/sql-visual-lab/` and is served at `/sql-visual-lab/` during development and `/courses/sql-visual-lab/` after deployment. It runs a small read-only sample database in the browser and visualizes common MySQL-style SELECT stages. See its [README](public/sql-visual-lab/README.md) for local serving instructions, challenges, and SQL dialect limitations.
 
 MySQL is the first populated course with 33 syllabus units, dedicated lesson routes, and four cumulative practice exams. Each topic exports its content from `src/data/courses/mysql/topics/<topic-id>.js`; the shared lesson page displays the standard sections for every module. Mini challenges live in the course's `activities/` folder and open as individual pages. The supplied lesson export is embedded in JavaScript modules, not loaded from a `.txt` file at runtime.
 

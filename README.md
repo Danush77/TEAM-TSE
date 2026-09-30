@@ -4,8 +4,8 @@ A collaborative website for Trainee Software Engineers (TSE) to introduce
 themselves, track their learning, and practice real Git/GitHub workflows —
 built as a static site.
 
-The interactive React quiz app lives in `quiz/` and is built separately for deployment.
-The MySQL area also includes a standalone, browser-based SQL Visual Learning Lab at `quiz/public/sql-visual-lab/`.
+The interactive React course app lives in `courses/` and is built separately for deployment. It contains course material, practice exams, and module quizzes.
+The MySQL area also includes a standalone, browser-based SQL Visual Learning Lab at `courses/public/sql-visual-lab/`.
 
 ## What this is
 
@@ -21,28 +21,17 @@ lightweight directory that links out to each person's page.
 
 ```
 tse-learning-hub/
-├── index.html                    Home page
-├── about.html                     About page
-├── team.html                       Team directory (renders from team/members/)
-│
-├── css/
-│   └── style.css                    Site-wide styling (home/about/team)
-│
-├── js/
-│   ├── main.js                       Nav + shared behavior
-│   └── team.js                        Builds the directory grid
-│
-├── assets/
-│   ├── images/
-│   └── icons/
-│
-├── team/
-│   └── members/
-│       ├── index.json                 List of member folders to show
-│       └── _template/                  Copy this folder to add yourself
-│           ├── index.html               Your page — edit freely
-│           └── style.css                Your styles — edit freely
-│
+├── index.html                         Home page
+├── about.html                          About page
+├── team.html                           Team directory (renders from team/members/)
+├── css/                                Site-wide home/about/team styling
+├── js/                                 Shared behavior and team directory renderer
+├── assets/                             Shared images and icons
+├── team/members/                       Member profile pages and directory data
+├── courses/                            Course library, practice exams, and quizzes
+│   ├── src/data/courses/               Course lessons and activities
+│   ├── src/data/quizzes/               Actual quiz question banks
+│   └── public/sql-visual-lab/          Browser-based SQL learning tool
 ├── CONTRIBUTING.md
 ├── LICENSE
 └── README.md
@@ -75,10 +64,10 @@ python3 -m http.server 8000
 
 Any static file server works — Python's is just built in on most machines.
 
-To run the quiz locally, open a second terminal and run:
+To run the courses locally, open a second terminal and run:
 
 ```bash
-cd quiz
+cd courses
 npm ci
 npm run dev
 ```
@@ -86,9 +75,9 @@ npm run dev
 ## GitHub Pages deployment
 
 The workflow in `.github/workflows/deploy-pages.yml` publishes the static site
-and builds the quiz into `/quiz/` whenever changes are pushed to `main`. In the
+and builds the course app into `/courses/` whenever changes are pushed to `main`. In the
 repository's **Settings > Pages**, set **Build and deployment > Source** to
-**GitHub Actions**. The quiz uses relative asset paths so it works under the
+**GitHub Actions**. The course app uses relative asset paths so it works under the
 repository's GitHub Pages URL.
 
 ## How to contribute

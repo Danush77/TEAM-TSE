@@ -1,4 +1,6 @@
-const KEY = 'quizapp:progress:v1'
+import { appStorageKey } from './storage'
+
+const KEY = appStorageKey('progress:v1')
 
 function readAll() {
   try {

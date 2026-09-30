@@ -7,6 +7,7 @@ import OptionButton from '../components/OptionButton'
 import Icon from '../components/Icon'
 import DifficultyMeter from '../components/DifficultyMeter'
 import { getDifficultyRank, normalizeDifficulty } from '../lib/difficulty'
+import { appStorageKey } from '../lib/storage'
 
 const TIME_LIMITS = { beginner: 30, medium: 60, hard: 90 }
 
@@ -66,7 +67,7 @@ export default function Quiz() {
   const [score, setScore] = useState(0)
   const [answers, setAnswers] = useState([])
   const [timeRemaining, setTimeRemaining] = useState(TIME_LIMITS.beginner)
-  const [timerEnabled, setTimerEnabled] = useState(() => localStorage.getItem('quizapp:timer-enabled') !== 'false')
+  const [timerEnabled, setTimerEnabled] = useState(() => localStorage.getItem(appStorageKey('timer-enabled')) !== 'false')
   const checkpointStateRef = useRef({})
   checkpointStateRef.current = { score, answers, selected, textValue }
 
@@ -267,7 +268,7 @@ export default function Quiz() {
             aria-label="Question timer"
             onClick={() => setTimerEnabled((enabled) => {
               const next = !enabled
-              localStorage.setItem('quizapp:timer-enabled', String(next))
+              localStorage.setItem(appStorageKey('timer-enabled'), String(next))
               return next
             })}
             className="flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-2 text-xs font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white"

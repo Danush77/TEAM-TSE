@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getMysqlExam, MYSQL_EXAMS } from '../data/mysql-practice-exams'
 import { getSqlVisualLabHref } from '../lib/paths'
+import { appStorageKey } from '../lib/storage'
 
 function loadDrafts(examId) {
   try {
-    return JSON.parse(localStorage.getItem(`quizapp:mysql-mock:${examId}`)) || {}
+    return JSON.parse(localStorage.getItem(appStorageKey(`mysql-mock:${examId}`))) || {}
   } catch {
     return {}
   }
@@ -65,7 +66,7 @@ export default function PracticeExams() {
   function updateDraft(taskId, value) {
     const next = { ...drafts, [taskId]: value }
     setDrafts(next)
-    localStorage.setItem(`quizapp:mysql-mock:${examId || 'overview'}`, JSON.stringify(next))
+    localStorage.setItem(appStorageKey(`mysql-mock:${examId || 'overview'}`), JSON.stringify(next))
   }
 
   if (examId && !exam) {

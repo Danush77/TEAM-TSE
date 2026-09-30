@@ -4,10 +4,11 @@ import ModuleCard from '../components/ModuleCard'
 import { TRACKS } from '../data/modules'
 import { COURSE_MODULES, getCourseSyllabus } from '../data/course-catalog'
 import { getAllProgress } from '../lib/progress'
+import { appStorageKey } from '../lib/storage'
 
 function readCompletedLessons(moduleId, topics) {
   try {
-    const stored = JSON.parse(localStorage.getItem(`quizapp:study:${moduleId}:v1`))
+    const stored = JSON.parse(localStorage.getItem(appStorageKey(`study:${moduleId}:v1`)))
     const validIds = new Set(topics.map((topic) => topic.id))
     return Array.isArray(stored) ? stored.filter((id) => validIds.has(id)) : []
   } catch {

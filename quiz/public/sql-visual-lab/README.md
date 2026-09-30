@@ -18,22 +18,39 @@ Then open <http://localhost:8001/>. The lab also appears at
 The GitHub Pages deployment copies this folder from Vite's `public/` directory
 to `/quiz/sql-visual-lab/`.
 
-The page loads CodeMirror 5, sql.js, and the MySQL build of node-sql-parser from
-CDNs. An internet connection is needed for the editor, parser, and WebAssembly
-SQL engine. If the parser or editor CDN is unavailable, the page explains the
-degraded behavior; SQL data stays in memory and is never uploaded.
+The SQL.js and node-sql-parser files are pinned local copies in `vendor/`;
+`worker.js` tries those first and has version-pinned CDN fallbacks. The SQL
+engine and parser run inside a dedicated Web Worker. CodeMirror 5 still loads
+from its pinned CDN and falls back to a plain textarea if unavailable. The
+worker can run queries offline after the page assets have loaded. If startup
+fails, the lab shows a Retry engine button. SQL data stays in memory and is
+never uploaded. The vendor folder includes the libraries' license texts.
 
 ## How the visual stage builder works
 
 `engine.js` asks node-sql-parser to parse the user's one-statement SELECT query
 into a MySQL-flavored AST. It builds partial SELECT statements from that AST,
-adding clauses in logical order, and runs each partial statement against the
-same fresh sql.js database. The resulting tables and row counts are compared
-to show filtering, joins, grouping, projection, sorting, and limits. The group
-cards are built from group-key values returned by SQL.js. If the parser cannot
-parse a SELECT or the query uses an unsupported structure, the lab still runs
-the final query when it is safe to do so and explains that the step view is not
-available.
+adding clauses in logical order. `app.js` sends the final query and each
+partial query to `worker.js`, which verifies each request again, prepares only
+SELECT ASTs, and executes them against the in-memory sql.js database. The
+database is switched to SQLite `query_only` mode after its schema and sample
+rows load. The worker returns at most 5,000 rows per request and is terminated
+and recreated if a request exceeds the configurable 5-second timeout or the
+learner cancels it. Results shown in the page remain limited to 100 rows.
+
+SQL.js does not expose SQLite's authorizer callback. The lab uses a conservative
+parser allow-list, a semicolon-aware single-statement check, SQLite's
+`query_only` mode, a fixed local schema, and a worker that can be terminated to
+provide layered browser-side protection. This is appropriate for this fixed,
+local teaching database; it is not a replacement for server-side controls when
+connecting to a real database.
+
+The resulting tables and row counts are compared to show filtering, joins,
+grouping, projection, sorting, and limits. The group cards are built from
+group-key values returned by SQL.js. If the parser cannot parse a query or the
+query uses an unsupported structure, the lab explains that the step view is
+unavailable. Unsupported MySQL features and broader SQL diagnostics are being
+added in later upgrade phases.
 
 The steps describe SQL's **logical** order. A real database may optimize and
 execute a query with a different physical plan.

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#0b0e1a" />
     <meta name="description" content="Write SQL and see how each clause changes the data, one step at a time." />
+    <meta name="sql-query-timeout" content="5000" />
     <title>SQL Visual Learning Lab | TSE Learning Hub</title>
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.21/codemirror.min.css" />
@@ -94,10 +95,12 @@ ORDER BY salary DESC;</textarea>
               <div class="editor-actions">
                 <button class="button button--quiet" id="clear-query" type="button">Clear</button>
                 <button class="button button--quiet" id="check-challenge" type="button" hidden>Check answer</button>
+                <button class="button button--quiet" id="cancel-query" type="button" hidden>Cancel query</button>
                 <button class="button button--primary" id="run-query" type="button"><span aria-hidden="true">▶</span> Run query</button>
               </div>
             </div>
             <div id="query-message" class="query-message" role="status" aria-live="polite"></div>
+            <button class="button button--quiet" id="retry-engine" type="button" hidden>Retry engine</button>
           </section>
 
           <section class="output-panel panel" aria-label="Query output">
@@ -169,8 +172,7 @@ ORDER BY salary DESC;</textarea>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.21/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.21/mode/sql/sql.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/node-sql-parser@5.4.0/umd/mysql.umd.js"></script>
+    <script src="./vendor/mysql.umd.js"></script>
     <script type="module" src="./app.js"></script>
   </body>
 </html>

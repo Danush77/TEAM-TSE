@@ -58,6 +58,10 @@ jobs:
           test -f ../_site/quiz/sql-visual-lab/index.html
           test -f ../_site/quiz/sql-visual-lab/app.js
           test -f ../_site/quiz/sql-visual-lab/engine.js
+          test -f ../_site/quiz/sql-visual-lab/worker.js
+          test -f ../_site/quiz/sql-visual-lab/vendor/sql-wasm.js
+          test -f ../_site/quiz/sql-visual-lab/vendor/sql-wasm.wasm
+          test -f ../_site/quiz/sql-visual-lab/vendor/mysql.umd.js
           test -f ../_site/quiz/sql-visual-lab/schema.sql
           test -f ../_site/quiz/sql-visual-lab/challenges.json
           grep -Eq '<script[^>]+src="\./assets/index-[^"]+\.js"' ../_site/quiz/index.html

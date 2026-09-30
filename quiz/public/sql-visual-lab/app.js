@@ -1,11 +1,8 @@
 import {
   SCHEMA_TABLES,
   buildExecutionSteps,
-  createDatabase,
-  executeSelect,
   findErrorLine,
   friendlyEngineError,
-  getTableRows,
   inspectQuery,
 } from './engine.js'
 
@@ -13,6 +10,8 @@ const $ = (selector) => document.querySelector(selector)
 const editorTextarea = $('#sql-editor')
 const queryMessage = $('#query-message')
 const runButton = $('#run-query')
+const cancelButton = $('#cancel-query')
+const retryButton = $('#retry-engine')
 const clearButton = $('#clear-query')
 const checkChallengeButton = $('#check-challenge')
 const challengeSelect = $('#challenge-select')
@@ -56,8 +55,9 @@ ORDER BY amount DESC
 LIMIT 5;`,
 }
 
-let database = null
-let sqlModule = null
+let workerClient = null
+let schemaSqlCache = ''
+let engineReady = false
 let parser = null
 let editor = null
 let challenges = []
@@ -74,6 +74,129 @@ let hintVisible = false
 const codeEditor = createEditor()
 configureTabs()
 configureActions()
+runButton.disabled = true
+
+const QUERY_TIMEOUT_MS = Number(document.querySelector('meta[name="sql-query-timeout"]')?.content) || 5000
+
+class SqlWorkerClient {
+  constructor(schemaSql) {
+    this.schemaSql = schemaSql
+    this.worker = null
+    this.pending = new Map()
+    this.nextRequestId = 1
+    this.readyPromise = null
+    this.isReady = false
+    this.restarting = false
+  }
+
+  start() {
+    this.readyPromise = this.createAndInitialize()
+    return this.readyPromise
+  }
+
+  async createAndInitialize() {
+    this.isReady = false
+    this.worker = new Worker(new URL('./worker.js', import.meta.url))
+    this.worker.addEventListener('message', (event) => this.receive(event.data))
+    this.worker.addEventListener('error', (event) => {
+      event.preventDefault()
+      this.handleWorkerFailure(new Error('The SQL worker stopped unexpectedly. Retry the engine and run your query again.'))
+    })
+    await this.sendRaw('init', { schemaSql: this.schemaSql }, 15000)
+    this.isReady = true
+    return true
+  }
+
+  async request(type, payload = {}, timeout = QUERY_TIMEOUT_MS) {
+    if (this.readyPromise) await this.readyPromise
+    if (!this.worker || !this.isReady) throw new Error('The SQL engine is not ready. Use Retry engine to restart it.')
+    return this.sendRaw(type, payload, timeout)
+  }
+
+  sendRaw(type, payload, timeout) {
+    const requestId = this.nextRequestId++
+    return new Promise((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        this.pending.delete(requestId)
+        const error = new Error(type === 'run'
+          ? `This query took longer than ${QUERY_TIMEOUT_MS / 1000} seconds and was stopped. Try a simpler query or add a LIMIT.`
+          : 'The SQL engine took too long to respond. Retry the engine and try again.')
+        error.code = type === 'run' ? 'TIMEOUT' : 'ENGINE_TIMEOUT'
+        reject(error)
+        this.restart(error)
+      }, timeout)
+      this.pending.set(requestId, { resolve, reject, timer, type })
+      this.worker.postMessage({ requestId, type, payload })
+    })
+  }
+
+  receive(message) {
+    const pending = this.pending.get(message?.requestId)
+    if (!pending) return
+    window.clearTimeout(pending.timer)
+    this.pending.delete(message.requestId)
+    if (!message.ok) {
+      const error = new Error(message.error?.message || 'The SQL engine could not run this query.')
+      error.code = message.error?.code || 'QUERY_FAILED'
+      pending.reject(error)
+      return
+    }
+    pending.resolve(message.result)
+  }
+
+  cancel() {
+    const error = new Error('Query cancelled. The SQL engine is restarting.')
+    error.name = 'AbortError'
+    this.restart(error)
+  }
+
+  dispose() {
+    this.worker?.terminate()
+    this.worker = null
+    this.rejectPending(new Error('The SQL engine is restarting.'))
+    this.isReady = false
+  }
+
+  handleWorkerFailure(error) {
+    if (!this.worker) return
+    if (this.isReady) this.restart(error)
+    else {
+      this.rejectPending(error)
+      this.worker.terminate()
+      this.worker = null
+      this.isReady = false
+    }
+  }
+
+  restart(reason) {
+    if (this.restarting) return this.readyPromise
+    this.restarting = true
+    this.worker?.terminate()
+    this.worker = null
+    this.isReady = false
+    this.rejectPending(reason)
+    this.readyPromise = this.createAndInitialize()
+      .catch((error) => {
+        engineReady = false
+        showFatalError(`The SQL engine could not restart. ${error.message}`)
+        throw error
+      })
+      .finally(() => { this.restarting = false })
+    // The active request already reports the timeout or cancellation. Hold the
+    // recovery rejection until the next action or the explicit retry button.
+    this.readyPromise.catch(() => {})
+    return this.readyPromise
+  }
+
+  rejectPending(reason) {
+    this.pending.forEach(({ reject, timer }) => {
+      window.clearTimeout(timer)
+      reject(reason)
+    })
+    this.pending.clear()
+  }
+}
+
 loadDependencies()
 
 function createEditor() {
@@ -144,6 +267,8 @@ function activateTab(name) {
 
 function configureActions() {
   runButton.addEventListener('click', () => runQuery())
+  cancelButton.addEventListener('click', () => workerClient?.cancel())
+  retryButton.addEventListener('click', () => loadDependencies())
   clearButton.addEventListener('click', clearQuery)
   checkChallengeButton.addEventListener('click', () => runQuery({ checkChallenge: true }))
   $('#reset-database').addEventListener('click', resetDatabase)
@@ -166,28 +291,29 @@ function configureActions() {
 }
 
 async function loadDependencies() {
-  if (!window.initSqlJs) {
-    showFatalError('The in-browser SQL engine did not load. Check your connection to the CDN, then refresh this page.')
-    return
-  }
-
+  retryButton.hidden = true
+  runButton.disabled = true
+  workerClient?.dispose()
+  workerClient = null
+  setQueryMessage('Starting the private SQL engine…', 'neutral')
   try {
-    const schemaResponse = await fetch(new URL('./schema.sql', import.meta.url))
-    if (!schemaResponse.ok) throw new Error(`Could not load the sample schema (${schemaResponse.status}).`)
-    const [schemaSql, challengeResponse] = await Promise.all([
-      schemaResponse.text(),
-      fetch(new URL('./challenges.json', import.meta.url)),
-    ])
-    sqlModule = await window.initSqlJs({
-      locateFile: (file) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/${file}`,
-    })
-    database = await createDatabase(sqlModule, schemaSql)
+    if (!schemaSqlCache) {
+      const schemaResponse = await fetch(new URL('./schema.sql', import.meta.url))
+      if (!schemaResponse.ok) throw new Error(`Could not load the sample schema (${schemaResponse.status}).`)
+      schemaSqlCache = await schemaResponse.text()
+    }
+    const challengeResponse = await fetch(new URL('./challenges.json', import.meta.url))
 
     if (challengeResponse.ok) {
       challenges = await challengeResponse.json()
       populateChallenges()
     }
     parser = window.NodeSQLParser?.Parser ? new window.NodeSQLParser.Parser() : null
+    workerClient = new SqlWorkerClient(schemaSqlCache)
+    await workerClient.start()
+    engineReady = true
+    runButton.disabled = false
+    retryButton.hidden = true
     renderSchemaTables()
     setQueryMessage('Database ready. Try the example or choose a table to explore.', 'success')
 
@@ -195,22 +321,20 @@ async function loadDependencies() {
       setQueryMessage('The query parser did not load. Queries can still run, but the step-by-step view is unavailable.', 'warning')
     }
   } catch (error) {
-    showFatalError(error.message || 'The SQL learning lab could not start. Refresh the page and try again.')
+    engineReady = false
+    showFatalError(error.message || 'The SQL learning lab could not start. Check your connection and retry.')
   }
 }
 
 async function resetDatabase() {
-  if (!sqlModule) return
+  if (!workerClient || !engineReady) return
   try {
-    const response = await fetch(new URL('./schema.sql', import.meta.url))
-    if (!response.ok) throw new Error('The sample data could not be reloaded.')
-    const schemaSql = await response.text()
-    database?.close()
-    database = await createDatabase(sqlModule, schemaSql)
+    await workerClient.request('reset')
     lastSuccessfulRun = null
     clearEditorError()
     renderSchemaTables()
     preview.replaceChildren(createNode('p', 'preview-placeholder', 'Choose a table above to inspect a few rows.'))
+    clearDisplayedResults('The sample data reset. Run a query to see results from the original data.')
     setQueryMessage('Sample database reset. Your next query starts with the original data.', 'success')
   } catch (error) {
     setQueryMessage(error.message || 'Could not reset the sample database.', 'error')
@@ -235,7 +359,7 @@ function renderSchemaTables() {
   })
 }
 
-function showTablePreview(tableName, activeButton) {
+async function showTablePreview(tableName, activeButton) {
   document.querySelectorAll('.schema-table-button').forEach((button) => {
     const active = button === activeButton
     button.classList.toggle('is-selected', active)
@@ -243,7 +367,7 @@ function showTablePreview(tableName, activeButton) {
   })
 
   try {
-    const result = getTableRows(database, tableName, 5)
+    const result = await workerClient.request('run', { sql: `SELECT * FROM \"${tableName}\" LIMIT 5` })
     preview.replaceChildren()
     const heading = createNode('div', 'preview-heading')
     heading.append(createNode('h3', '', `${tableName} <span>sample</span>`))
@@ -256,11 +380,12 @@ function showTablePreview(tableName, activeButton) {
     heading.append(tryButton)
     preview.append(heading, renderTable(result, { compact: true, rowLimit: 5 }))
   } catch (error) {
-    preview.replaceChildren(createNode('p', 'preview-placeholder', error.message))
+    preview.replaceChildren(createNode('p', 'preview-placeholder', friendlyEngineError(error)))
   }
 }
 
 function populateChallenges() {
+  while (challengeSelect.options.length > 1) challengeSelect.remove(1)
   for (const challenge of challenges) {
     const option = document.createElement('option')
     option.value = challenge.id
@@ -309,6 +434,7 @@ function toggleSolution() {
 }
 
 function clearQuery() {
+  if (isQueryRunning) workerClient?.cancel()
   codeEditor.setValue('')
   codeEditor.clearError()
   lastSuccessfulRun = null
@@ -320,7 +446,25 @@ function clearQuery() {
   setQueryMessage('Editor cleared.', 'neutral')
 }
 
-function runQuery({ checkChallenge = false } = {}) {
+let isQueryRunning = false
+
+function setRunningState(running) {
+  runButton.hidden = running
+  cancelButton.hidden = !running
+  clearButton.disabled = running
+  checkChallengeButton.disabled = running
+}
+
+function clearDisplayedResults(message) {
+  resultCount.textContent = ''
+  executionMeta.textContent = ''
+  resultContent.replaceChildren(createEmptyState('No current result', message))
+  renderStepUnavailable(message)
+  activeSteps = []
+}
+
+async function runQuery({ checkChallenge = false } = {}) {
+  if (!engineReady || isQueryRunning) return null
   const sql = codeEditor.getValue()
   clearEditorError()
   stopAutoplay()
@@ -331,56 +475,63 @@ function runQuery({ checkChallenge = false } = {}) {
   } catch (error) {
     const line = findErrorLine(sql, error)
     markEditorError(line)
+    clearDisplayedResults('This query did not run. Fix the SQL and run it again.')
     setQueryMessage(error.message, 'error')
     return null
   }
 
+  isQueryRunning = true
+  setRunningState(true)
+  clearDisplayedResults('Running query in the isolated SQL worker…')
   const startedAt = performance.now()
-  let result
   try {
-    result = executeSelect(database, sql)
+    const result = await workerClient.request('run', { sql })
+    const elapsed = performance.now() - startedAt
+    let stepPlan = { available: false, steps: [], reason: inspection.reason || 'Step view not available for this query yet.' }
+    if (inspection.ast && inspection.visualizationAvailable) {
+      stepPlan = await buildExecutionSteps(parser, inspection.ast, (statement) => workerClient.request('run', { sql: statement }))
+    }
+
+    lastSuccessfulRun = { sql, result, ast: inspection.ast, stepPlan, elapsed }
+    renderResult(result)
+    executionMeta.textContent = `${elapsed.toFixed(1)} ms`
+    resultCount.textContent = `${result.totalRows} ${result.totalRows === 1 ? 'row' : 'rows'}${result.truncated ? ' (showing first 5,000)' : ''}`
+    setQueryMessage(
+      stepPlan.available
+        ? 'Query complete. Follow the steps to see how the rows changed.'
+        : 'Query complete. The final result is ready; this query has no step breakdown.',
+      stepPlan.available ? 'success' : 'warning',
+    )
+
+    if (stepPlan.available) {
+      renderSteps(stepPlan.steps)
+      activateTab('steps')
+    } else {
+      renderStepUnavailable(stepPlan.reason || 'Step view not available for this query yet. The final result is still shown.')
+      activateTab('result')
+    }
+
+    if (checkChallenge) await gradeChallenge(result)
+    return result
   } catch (error) {
     const columns = Object.values(SCHEMA_TABLES).flat().map(([name]) => name)
     const line = findErrorLine(sql, error)
     markEditorError(line)
-    setQueryMessage(friendlyEngineError(error, columns), 'error')
+    clearDisplayedResults('The previous result was cleared because this query did not finish.')
+    const tone = error.name === 'AbortError' || error.code === 'TIMEOUT' ? 'warning' : 'error'
+    setQueryMessage(friendlyEngineError(error, columns), tone)
     return null
+  } finally {
+    isQueryRunning = false
+    setRunningState(false)
   }
-
-  const elapsed = performance.now() - startedAt
-  let stepPlan = { available: false, steps: [], reason: inspection.reason || 'Step view not available for this query yet.' }
-  if (inspection.ast && inspection.visualizationAvailable) {
-    stepPlan = buildExecutionSteps(parser, inspection.ast, database)
-  }
-
-  lastSuccessfulRun = { sql, result, ast: inspection.ast, stepPlan, elapsed }
-  renderResult(result)
-  executionMeta.textContent = `${elapsed.toFixed(1)} ms`
-  resultCount.textContent = `${result.totalRows} ${result.totalRows === 1 ? 'row' : 'rows'}`
-  setQueryMessage(
-    stepPlan.available
-      ? 'Query complete. Follow the steps to see how the rows changed.'
-      : 'Query complete. The final result is ready; this query has no step breakdown.',
-    stepPlan.available ? 'success' : 'warning',
-  )
-
-  if (stepPlan.available) {
-    renderSteps(stepPlan.steps)
-    activateTab('steps')
-  } else {
-    renderStepUnavailable(stepPlan.reason || 'Step view not available for this query yet. The final result is still shown.')
-    activateTab('result')
-  }
-
-  if (checkChallenge) gradeChallenge(result)
-  return result
 }
 
-function gradeChallenge(result) {
-  if (!selectedChallenge || !database) return
+async function gradeChallenge(result) {
+  if (!selectedChallenge || !workerClient) return
   let expected
   try {
-    expected = executeSelect(database, selectedChallenge.expectedResult.query)
+    expected = await workerClient.request('run', { sql: selectedChallenge.expectedResult.query })
   } catch {
     setFeedback('The reference result for this challenge could not be loaded. Reset the database and try again.', 'error')
     return
@@ -826,9 +977,13 @@ function setQueryMessage(message, tone = 'neutral') {
 }
 
 function showFatalError(message) {
+  engineReady = false
   setQueryMessage(message, 'error')
   runButton.disabled = true
+  runButton.hidden = false
+  cancelButton.hidden = true
   checkChallengeButton.disabled = true
+  retryButton.hidden = false
   schemaTables.replaceChildren(createNode('p', 'loading-copy', 'The sample database is not available.'))
 }
 

@@ -1,4 +1,3 @@
-const MAX_PREVIEW_ROWS = 100
 const MYSQL_OPTIONS = { database: 'MySQL' }
 
 export const SCHEMA_TABLES = Object.freeze({
@@ -14,33 +13,6 @@ export const SCHEMA_TABLES = Object.freeze({
     ['order_date', 'TEXT'], ['status', 'TEXT'],
   ],
 })
-
-export async function createDatabase(SQL, schemaSql) {
-  const database = new SQL.Database()
-  database.run(schemaSql)
-  return database
-}
-
-export function getTableRows(database, tableName, limit = 5) {
-  if (!Object.hasOwn(SCHEMA_TABLES, tableName)) {
-    throw new Error('That table is not part of this sample database.')
-  }
-
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 5, 100))
-  return executeSelect(database, `SELECT * FROM "${tableName}" LIMIT ${safeLimit}`)
-}
-
-export function executeSelect(database, sql) {
-  const result = database.exec(sql)[0]
-  if (!result) return { columns: [], rows: [] }
-
-  return {
-    columns: result.columns,
-    rows: result.values.slice(0, MAX_PREVIEW_ROWS),
-    totalRows: result.values.length,
-    truncated: result.values.length > MAX_PREVIEW_ROWS,
-  }
-}
 
 export function inspectQuery(sql, parser) {
   const normalized = String(sql || '').trim()
@@ -92,7 +64,7 @@ export function inspectQuery(sql, parser) {
   return { ast, visualizationAvailable: !unsupported, reason: unsupported || '' }
 }
 
-export function buildExecutionSteps(parser, ast, database) {
+export async function buildExecutionSteps(parser, ast, queryRunner) {
   const supportMessage = explainUnsupportedQuery(ast)
   if (supportMessage) return { available: false, reason: supportMessage, steps: [] }
 
@@ -101,9 +73,9 @@ export function buildExecutionSteps(parser, ast, database) {
   const sourceEntries = Array.isArray(ast.from) ? ast.from : []
   const hasFrom = sourceEntries.length > 0
 
-  const runStep = (definition, options) => {
+  const runStep = async (definition, options) => {
     const statement = makePartialQuery(parser, ast, options)
-    const result = executeSelect(database, statement)
+    const result = await queryRunner(statement)
     const step = {
       ...definition,
       sql: statement,
@@ -119,7 +91,7 @@ export function buildExecutionSteps(parser, ast, database) {
     if (hasFrom) {
       const first = sourceEntries[0]
       const fromName = getTableName(first)
-      runStep({
+      await runStep({
         id: 'from',
         label: 'FROM',
         title: `Start with ${fromName}`,
@@ -130,14 +102,14 @@ export function buildExecutionSteps(parser, ast, database) {
         const entry = sourceEntries[index]
         const joinType = String(entry.join || 'JOIN').replace(/\s+JOIN$/i, '').trim() || 'INNER'
         const tableName = getTableName(entry)
-      runStep({
+      await runStep({
         id: `join-${index}`,
         kind: 'join',
         joinType,
         title: `${joinType} JOIN ${tableName}`,
         description: describeJoin(entry, tableName, joinType, parser),
         joinTable: tableName,
-        joinRight: getTableRows(database, tableName, 8),
+        joinRight: await queryRunner(`SELECT * FROM \`${String(tableName).replace(/`/g, '``')}\` LIMIT 8`),
       }, { fromCount: index + 1 })
       }
     }
@@ -155,14 +127,14 @@ export function buildExecutionSteps(parser, ast, database) {
           { expr: { type: 'column_ref', table: null, column: '*' }, as: null },
         ],
       })
-      const markerResult = executeSelect(database, markedRows)
-      runStep({
+      const markerResult = await queryRunner(markedRows)
+      await runStep({
         id: 'where',
         title: 'WHERE',
         description: `WHERE checks each incoming row against ${expressionText(ast.where, parser)}. Rows that do not match are removed before groups are formed.`,
         filterFlags: markerResult.rows.map((row) => Boolean(row[0])),
         filterReason: expressionText(ast.where, parser),
-        filterInput: executeSelect(database, filterRows),
+        filterInput: await queryRunner(filterRows),
       }, { fromCount: sourceEntries.length, includeWhere: true })
     }
 
@@ -184,11 +156,11 @@ export function buildExecutionSteps(parser, ast, database) {
           { expr: { type: 'column_ref', table: null, column: '*' }, as: null },
         ],
       })
-      const grouped = buildGroupBuckets(executeSelect(database, groupRowsSql), groupExpressions, parser)
-      runStep({
+      const grouped = buildGroupBuckets(await queryRunner(groupRowsSql), groupExpressions, parser)
+      await runStep({
         id: 'group',
         title: 'GROUP BY',
-        description: `GROUP BY collects the ${executeSelect(database, inputRows).totalRows} incoming rows into groups using ${groupExpressions.map((expr) => expressionText(expr, parser)).join(', ')}.`,
+        description: `GROUP BY collects the ${(await queryRunner(inputRows)).totalRows} incoming rows into groups using ${groupExpressions.map((expr) => expressionText(expr, parser)).join(', ')}.`,
         kind: 'groups',
         buckets: grouped.buckets,
         bucketResult: grouped.result,
@@ -201,7 +173,7 @@ export function buildExecutionSteps(parser, ast, database) {
     }
 
     if (hasAggregate(ast.columns) && groupExpressions.length) {
-      runStep({
+      await runStep({
         id: 'aggregate',
         title: 'AGGREGATE',
         description: 'Aggregate functions calculate a value for each group. COUNT, SUM, AVG, MIN, and MAX ignore NULL values where SQL defines them to.',
@@ -212,7 +184,7 @@ export function buildExecutionSteps(parser, ast, database) {
         columns: ast.columns,
       })
     } else if (hasAggregate(ast.columns) && !groupExpressions.length) {
-      runStep({
+      await runStep({
         id: 'aggregate',
         title: 'AGGREGATE',
         description: 'Without GROUP BY, aggregate functions calculate one result for the entire set of rows.',
@@ -231,8 +203,8 @@ export function buildExecutionSteps(parser, ast, database) {
         includeHaving: false,
         columns: ast.columns,
       })
-      const beforeResult = executeSelect(database, beforeHaving)
-      const havingStep = runStep({
+      const beforeResult = await queryRunner(beforeHaving)
+      const havingStep = await runStep({
         id: 'having',
         title: 'HAVING',
         description: `HAVING filters completed groups using ${expressionText(ast.having, parser)}. Aggregates are calculated before this filter is applied.`,
@@ -248,8 +220,8 @@ export function buildExecutionSteps(parser, ast, database) {
       })
 
       if (groupExpressions.length) {
-        const groupKeysBefore = executeSelect(database, makeGroupKeyQuery(parser, ast, false))
-        const groupKeysAfter = executeSelect(database, makeGroupKeyQuery(parser, ast, true))
+        const groupKeysBefore = await queryRunner(makeGroupKeyQuery(parser, ast, false))
+        const groupKeysAfter = await queryRunner(makeGroupKeyQuery(parser, ast, true))
         havingStep.groupFlags = buildGroupFlags(groupKeysBefore, groupKeysAfter, groupExpressions.length)
         havingStep.groupBuckets = groupKeysBefore.rows.map((row) => ({
           keys: row.slice(0, groupExpressions.length),
@@ -261,7 +233,7 @@ export function buildExecutionSteps(parser, ast, database) {
     if (!ast.columns || ast.columns === '*') {
       // A plain SELECT * still has a projection step; the result is the source rows.
     }
-    runStep({
+    await runStep({
       id: 'select',
       title: 'SELECT',
       description: describeSelect(ast.columns, parser),
@@ -275,7 +247,7 @@ export function buildExecutionSteps(parser, ast, database) {
     })
 
     if (ast.distinct) {
-      runStep({
+      await runStep({
         id: 'distinct',
         title: 'DISTINCT',
         description: 'DISTINCT compares the selected column values and removes duplicate result rows.',
@@ -290,7 +262,7 @@ export function buildExecutionSteps(parser, ast, database) {
     }
 
     if (ast.orderby?.length) {
-      runStep({
+      await runStep({
         id: 'order',
         kind: 'order',
         title: 'ORDER BY',
@@ -316,12 +288,12 @@ export function buildExecutionSteps(parser, ast, database) {
         includeDistinct: Boolean(ast.distinct),
         includeOrderBy: Boolean(ast.orderby?.length),
       })
-      const limitStep = runStep({
+      const limitStep = await runStep({
         id: 'limit',
         kind: 'limit',
         title: 'LIMIT',
         description: 'LIMIT keeps only the first requested rows after sorting. Later rows are outside the final result.',
-        filterInput: executeSelect(database, inputBeforeLimit),
+        filterInput: await queryRunner(inputBeforeLimit),
       }, {
         fromCount: sourceEntries.length,
         includeWhere: Boolean(ast.where),
@@ -337,6 +309,7 @@ export function buildExecutionSteps(parser, ast, database) {
 
     return { available: steps.length > 0, reason: '', steps }
   } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'TIMEOUT') throw error
     return {
       available: false,
       reason: `Step view not available for this query yet. The final result is still shown. (${friendlyEngineError(error)})`,

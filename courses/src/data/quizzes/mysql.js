@@ -405,23 +405,34 @@ Which department is returned?`,
 },
 
 {
-  id: 'mysql-14',
-  type: 'mcq',
-  difficulty: 'expert',
-  category: 'Code Review',
-  prompt: `A senior developer reviews the previous query and says:
+id: 'mysql-14',
+type: 'mcq',
+difficulty: 'expert',
+category: 'Code Review',
+prompt: `A developer wants to retrieve the department with the highest total sales amount.
 
-"This query is risky in production."
+The query is:
 
-Why?`,
-  options: [
-    'LIMIT cannot be used with GROUP BY.',
-    'SUM() cannot be sorted.',
-    'Two departments have the same total, so LIMIT 1 without a tie-breaker may return different results.',
-    'Aliases cannot be used in ORDER BY.'
-  ],
-  correctAnswer: 'Two departments have the same total, so LIMIT 1 without a tie-breaker may return different results.',
-  explanation: 'This is a subtle but important production issue. ORDER BY total DESC does not fully define the ordering when totals are equal. Different execution plans or versions may return either HR or Sales. To make the result deterministic, add another ORDER BY column, such as department ASC.'
+SELECT department,
+SUM(amount) AS total
+FROM sales
+GROUP BY department
+ORDER BY total DESC
+LIMIT 1;
+
+During code review, a senior developer points out that the query may not always return a predictable result.
+
+Assume that two or more departments have the same highest total sales amount.
+
+What is the main issue with this query?`,
+options: [
+'LIMIT cannot be used with GROUP BY.',
+'SUM() cannot be used with ORDER BY.',
+'The query does not define a tie-breaker when multiple departments have the same highest total.',
+'Column aliases cannot be used in ORDER BY.'
+],
+correctAnswer: 'The query does not define a tie-breaker when multiple departments have the same highest total.',
+explanation: 'ORDER BY total DESC sorts departments by their total sales in descending order. However, if multiple departments have the same highest total, their relative order is not guaranteed. LIMIT 1 returns only one row, so the selected department may be unpredictable. To make the result deterministic, add a secondary sort condition, such as ORDER BY total DESC, department ASC.'
 },
 
 {

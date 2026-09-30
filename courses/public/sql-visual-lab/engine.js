@@ -64,9 +64,26 @@ export function inspectQuery(sql, parser) {
   return { ast, visualizationAvailable: !unsupported, reason: unsupported || '' }
 }
 
-export async function buildExecutionSteps(parser, ast, queryRunner) {
+export async function buildExecutionSteps(parser, ast, queryRunner, finalResult = null) {
   const supportMessage = explainUnsupportedQuery(ast)
   if (supportMessage) return { available: false, reason: supportMessage, steps: [] }
+
+  if (containsWindowExpression(ast.columns) || ast.window || ast.qualify) {
+    return buildWindowExecutionStep(parser, ast, queryRunner, finalResult)
+  }
+  if (isRecursiveCte(ast)) {
+    const hierarchy = buildHierarchyExecutionStep(parser, ast, finalResult)
+    if (!hierarchy) {
+      return { available: false, reason: 'This recursive CTE returned its result, but it does not expose an id, a parent id, and a depth or level column, so a tree cannot be drawn safely.', steps: [] }
+    }
+    return { available: true, reason: '', steps: [hierarchy] }
+  }
+  if (isEmployeeSelfJoin(ast)) {
+    const hierarchy = await buildSelfJoinHierarchyStep(parser, ast, queryRunner, finalResult)
+    return hierarchy
+      ? { available: true, reason: '', steps: [hierarchy] }
+      : { available: false, reason: 'This self-join uses a parent/child relationship, but its rows could not be mapped into a stable hierarchy. Include the child id and manager id in the query.', steps: [] }
+  }
 
   const steps = []
   let previousResult = null
@@ -425,8 +442,8 @@ function hasMatchingGroup(keys, candidates, groupCount) {
 }
 
 function explainUnsupportedQuery(ast) {
-  if (ast.with) return 'Step view not available for this query yet: common table expressions (WITH) are supported for results only.'
-  if (ast.window || ast.qualify) return 'Step view not available for this query yet: window functions are supported for results only.'
+  if (ast.with && !isRecursiveCte(ast)) return 'Step view not available for this query yet: common table expressions (WITH) are supported for results only.'
+  if (ast.window || ast.qualify || containsWindowExpression(ast.columns)) return ''
   if (ast._next || ast.set_op) return 'Step view not available for this query yet: UNION and other set operations are supported for results only.'
   if (!Array.isArray(ast.from) && ast.from) return 'Step view not available for this query yet: derived tables are supported for results only.'
   if (Array.isArray(ast.from) && ast.from.some((entry) => !getTableName(entry))) {
@@ -436,6 +453,244 @@ function explainUnsupportedQuery(ast) {
     return 'Step view not available for this query yet: subqueries inside conditions are supported for results only.'
   }
   return ''
+}
+
+async function buildWindowExecutionStep(parser, ast, queryRunner, finalResult) {
+  if (!finalResult) return { available: false, reason: 'Window results are ready, but partition details could not be attached to this result.', steps: [] }
+  const functions = getWindowFunctions(ast, parser)
+  const partitions = buildWindowPartitions(ast, finalResult, parser, queryRunner)
+  let groups = []
+  try { groups = await partitions } catch { groups = [] }
+  const details = {
+    id: 'window-functions',
+    title: 'Window calculations',
+    description: 'Window functions keep each input row, then calculate a value across its partition. The cards show each function and its partition, order, and frame; the result table shows the computed value on every row.',
+    kind: 'window',
+    sql: parser.sqlify(ast, MYSQL_OPTIONS).replace(/;\s*$/, ''),
+    result: finalResult,
+    functions,
+    partitions: groups,
+    input: finalResult,
+  }
+  return { available: true, reason: '', steps: [details] }
+}
+
+async function buildWindowPartitions(ast, result, parser, queryRunner) {
+  const windows = getWindowFunctions(ast, parser)
+  const partitionExpressions = []
+  windows.forEach((item) => item.partitionExpressions.forEach((expr) => {
+    if (!partitionExpressions.some((current) => expressionText(current, parser) === expressionText(expr, parser))) partitionExpressions.push(expr)
+  }))
+  if (!partitionExpressions.length || ast.distinct) {
+    return [{ label: ast.distinct ? 'Window rows (DISTINCT prevents hidden partition columns)' : 'All rows · one partition', keys: [], rows: result.rows, indexes: result.rows.map((_row, index) => index) }]
+  }
+
+  const copy = clone(ast)
+  const selected = Array.isArray(ast.columns) ? clone(ast.columns) : [{ expr: { type: 'column_ref', table: null, column: '*' }, as: null }]
+  const helpers = partitionExpressions.map((expr, index) => ({ expr: clone(expr), as: `__visual_partition_${index + 1}` }))
+  copy.columns = [...selected, ...helpers]
+  copy._next = null
+  copy.set_op = null
+  const response = await queryRunner(parser.sqlify(copy, MYSQL_OPTIONS).replace(/;\s*$/, ''))
+  const helperOffset = Math.max(0, response.columns.length - helpers.length)
+  const mapped = new Map()
+  response.rows.forEach((row, index) => {
+    const values = row.slice(helperOffset)
+    const key = stableValue(values)
+    if (!mapped.has(key)) mapped.set(key, { label: values.map((value, keyIndex) => `${expressionText(partitionExpressions[keyIndex], parser)} = ${value === null ? 'NULL' : String(value)}`).join(' · '), keys: values, rows: [], indexes: [] })
+    const bucket = mapped.get(key)
+    bucket.rows.push(result.rows[index] || row.slice(0, helperOffset))
+    bucket.indexes.push(index)
+  })
+  return [...mapped.values()]
+}
+
+function getWindowFunctions(ast, parser) {
+  const named = new Map()
+  const namedItems = ast.window?.expr || []
+  namedItems.forEach((entry) => {
+    const spec = entry.as_window_specification?.window_specification || entry.as_window_specification
+    if (entry.name) named.set(String(entry.name.value || entry.name).toLowerCase(), spec)
+  })
+  const output = []
+  const visit = (node, alias = '') => {
+    if (!node || typeof node !== 'object') return
+    if (Array.isArray(node)) { node.forEach((item) => visit(item, alias)); return }
+    if (node.type === 'function' && node.over) {
+      const name = getAstFunctionName(node)
+      const reference = node.over.as_window_specification
+      const spec = typeof reference === 'string'
+        ? named.get(reference.toLowerCase())
+        : reference?.window_specification || reference
+      const partitionExpressions = spec?.partitionby?.map((entry) => entry.expr || entry) || []
+      const ordering = spec?.orderby?.map((entry) => `${expressionText(entry.expr, parser)} ${entry.type || 'ASC'}`).join(', ') || ''
+      const frame = spec?.window_frame_clause ? expressionText(spec.window_frame_clause, parser) : ''
+      output.push({
+        name: name || 'Window function',
+        alias,
+        specificationName: typeof reference === 'string' ? reference : '',
+        partition: partitionExpressions.map((expr) => expressionText(expr, parser)),
+        partitionExpressions,
+        order: ordering,
+        frame,
+      })
+      return
+    }
+    Object.entries(node).forEach(([key, value]) => visit(value, key === 'expr' ? alias : alias))
+  }
+  ;(ast.columns || []).forEach((column) => visit(column.expr, column.as || ''))
+  return output
+}
+
+function getAstFunctionName(node) {
+  const name = node.name?.name
+  if (Array.isArray(name)) return name.map((part) => part.value || '').join('.').toUpperCase()
+  return String(name?.value || name || '').toUpperCase()
+}
+
+function buildHierarchyExecutionStep(parser, ast, result) {
+  if (!result?.columns?.length) return null
+  const columns = result.columns.map((column) => String(column).replace(/[`"[\]]/g, '').toLowerCase())
+  const idIndex = columns.findIndex((column) => ['id', 'employee_id', 'node_id'].includes(column))
+  const parentIndex = columns.findIndex((column) => ['manager_id', 'parent_id', 'reports_to'].includes(column))
+  const depthIndex = columns.findIndex((column) => ['depth', 'level', 'hierarchy_level'].includes(column))
+  if (idIndex < 0 || parentIndex < 0) return null
+
+  const records = result.rows.map((row, index) => ({ row, index, id: row[idIndex], parent: row[parentIndex], depth: depthIndex >= 0 ? Number(row[depthIndex]) : null }))
+  const byId = new Map(records.map((record) => [String(record.id), record]))
+  const getDepth = (record, seen = new Set()) => {
+    if (Number.isFinite(record.depth)) return Math.max(0, record.depth)
+    const key = String(record.id)
+    if (seen.has(key)) return 0
+    seen.add(key)
+    const parent = record.parent === null ? null : byId.get(String(record.parent))
+    return parent ? getDepth(parent, seen) + 1 : 0
+  }
+  const levels = new Map()
+  records.forEach((record) => {
+    const depth = getDepth(record)
+    if (!levels.has(depth)) levels.set(depth, [])
+    levels.get(depth).push(record)
+  })
+  return {
+    id: 'recursive-hierarchy',
+    title: 'Recursive hierarchy',
+    description: 'The recursive CTE starts with its anchor rows, then repeatedly joins each discovered parent to its children. Rows are grouped by their returned depth or inferred parent level.',
+    kind: 'hierarchy',
+    sql: parser.sqlify(ast, MYSQL_OPTIONS).replace(/;\s*$/, ''),
+    result,
+    input: result,
+    idColumn: result.columns[idIndex],
+    parentColumn: result.columns[parentIndex],
+    depthColumn: depthIndex >= 0 ? result.columns[depthIndex] : 'inferred depth',
+    levels: [...levels.entries()].sort(([left], [right]) => left - right).map(([depth, items]) => ({ depth, rows: items.map((item) => item.row), ids: items.map((item) => item.id), parents: items.map((item) => item.parent) })),
+  }
+}
+
+async function buildSelfJoinHierarchyStep(parser, ast, queryRunner, result) {
+  if (!result?.rows?.length || ast.distinct || !Array.isArray(ast.columns) || !Array.isArray(ast.from)) return null
+  const relation = findSelfJoinRelation(ast)
+  if (!relation) return null
+  const copy = clone(ast)
+  copy.columns = [
+    ...clone(ast.columns),
+    { expr: { type: 'column_ref', table: relation.childAlias, column: 'id' }, as: '__visual_child_id' },
+    { expr: { type: 'column_ref', table: relation.childAlias, column: 'manager_id' }, as: '__visual_parent_id' },
+  ]
+  const response = await queryRunner(parser.sqlify(copy, MYSQL_OPTIONS).replace(/;\s*$/, ''))
+  const offset = response.columns.length - 2
+  const records = result.rows.map((row, index) => ({
+    row,
+    id: response.rows[index]?.[offset],
+    parent: response.rows[index]?.[offset + 1] ?? null,
+  }))
+  if (records.some((record) => record.id === undefined)) return null
+  const byId = new Map(records.map((record) => [String(record.id), record]))
+  const depthFor = (record, seen = new Set()) => {
+    const key = String(record.id)
+    if (seen.has(key)) return 0
+    seen.add(key)
+    const parent = record.parent === null ? null : byId.get(String(record.parent))
+    return parent ? depthFor(parent, seen) + 1 : 0
+  }
+  const levels = new Map()
+  records.forEach((record) => {
+    const depth = depthFor(record)
+    if (!levels.has(depth)) levels.set(depth, [])
+    levels.get(depth).push(record)
+  })
+  return {
+    id: 'self-join-hierarchy',
+    title: 'Manager hierarchy',
+    description: `The self-join matches each ${relation.childAlias} row to its manager through manager_id = id. The rows are arranged into levels by following that parent link.`,
+    kind: 'hierarchy',
+    sql: parser.sqlify(ast, MYSQL_OPTIONS).replace(/;\s*$/, ''),
+    result,
+    input: result,
+    idColumn: 'employee id',
+    parentColumn: 'manager_id',
+    depthColumn: 'inferred depth',
+    levels: [...levels.entries()].sort(([left], [right]) => left - right).map(([depth, items]) => ({
+      depth,
+      rows: items.map((item) => item.row),
+      ids: items.map((item) => item.id),
+      parents: items.map((item) => item.parent),
+    })),
+  }
+}
+
+function isEmployeeSelfJoin(ast) {
+  return Boolean(findSelfJoinRelation(ast))
+}
+
+function findSelfJoinRelation(ast) {
+  if (!Array.isArray(ast?.from)) return null
+  for (let rightIndex = 1; rightIndex < ast.from.length; rightIndex += 1) {
+    const right = ast.from[rightIndex]
+    for (let leftIndex = 0; leftIndex < rightIndex; leftIndex += 1) {
+      const left = ast.from[leftIndex]
+      if (!getTableName(left) || getTableName(left).toLowerCase() !== getTableName(right).toLowerCase()) continue
+      const leftAlias = String(left.as || getTableName(left))
+      const rightAlias = String(right.as || getTableName(right))
+      if (leftAlias.toLowerCase() === rightAlias.toLowerCase()) continue
+      const conditions = collectEqualityColumnPairs(right.on)
+      const candidates = [
+        { childAlias: leftAlias, managerAlias: rightAlias },
+        { childAlias: rightAlias, managerAlias: leftAlias },
+      ]
+      const relation = candidates.find(({ childAlias, managerAlias }) => conditions.some(([one, two]) =>
+        isColumnPair(one, childAlias, 'manager_id') && isColumnPair(two, managerAlias, 'id')
+        || isColumnPair(two, childAlias, 'manager_id') && isColumnPair(one, managerAlias, 'id')))
+      if (relation) return relation
+    }
+  }
+  return null
+}
+
+function collectEqualityColumnPairs(node, pairs = []) {
+  if (!node || typeof node !== 'object') return pairs
+  if (Array.isArray(node)) { node.forEach((item) => collectEqualityColumnPairs(item, pairs)); return pairs }
+  if (node.type === 'binary_expr' && String(node.operator).trim() === '=' && node.left?.type === 'column_ref' && node.right?.type === 'column_ref') {
+    pairs.push([node.left, node.right])
+  }
+  Object.values(node).forEach((value) => collectEqualityColumnPairs(value, pairs))
+  return pairs
+}
+
+function isColumnPair(node, alias, column) {
+  return String(node?.table || '').toLowerCase() === alias.toLowerCase()
+    && String(node?.column || '').toLowerCase() === column.toLowerCase()
+}
+
+function isRecursiveCte(ast) {
+  return Array.isArray(ast?.with) && ast.with.some((item) => Boolean(item.recursive))
+}
+
+function containsWindowExpression(value) {
+  if (!value || typeof value !== 'object') return false
+  if (Array.isArray(value)) return value.some(containsWindowExpression)
+  if (value.type === 'window' || value.over?.type === 'window') return true
+  return Object.values(value).some(containsWindowExpression)
 }
 
 function containsSubquery(value) {

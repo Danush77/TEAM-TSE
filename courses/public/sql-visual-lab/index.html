@@ -46,6 +46,22 @@
         </select>
       </section>
 
+      <section class="mode-bar panel" aria-label="SQL lab mode">
+        <div class="mode-description">
+          <p class="eyebrow eyebrow--small">EXECUTION MODE</p>
+          <p id="mode-copy">Query Mode runs read-only queries against the challenge data.</p>
+        </div>
+        <div class="mode-controls">
+          <div class="mode-switch" role="group" aria-label="Choose SQL execution mode">
+            <button class="mode-button is-active" id="query-mode" type="button" aria-pressed="true">Query mode</button>
+            <button class="mode-button" id="sandbox-mode" type="button" aria-pressed="false">Sandbox mode</button>
+          </div>
+          <span class="transaction-status" id="transaction-status" aria-live="polite" hidden>Autocommit</span>
+          <button class="button button--quiet" id="undo-sandbox" type="button" disabled hidden>Undo</button>
+          <button class="button button--quiet" id="redo-sandbox" type="button" disabled hidden>Redo</button>
+        </div>
+      </section>
+
       <div class="workspace">
         <aside class="schema-panel panel" aria-labelledby="schema-title">
           <div class="panel-heading">
@@ -80,6 +96,13 @@
                 <option value="group">Group orders by status</option>
                 <option value="having">Filter groups with HAVING</option>
                 <option value="order-limit">Sort and limit results</option>
+                <option value="window-ranking" data-mode="query">Rank employees inside departments</option>
+                <option value="hierarchy" data-mode="query">Trace the employee hierarchy</option>
+                <option value="sandbox-insert" data-mode="sandbox" hidden>Insert a department</option>
+                <option value="sandbox-update" data-mode="sandbox" hidden>Update one employee</option>
+                <option value="sandbox-delete" data-mode="sandbox" hidden>Delete one order</option>
+                <option value="sandbox-transaction" data-mode="sandbox" hidden>Roll back a change</option>
+                <option value="sandbox-create" data-mode="sandbox" hidden>Create a table</option>
               </select>
             </div>
 
@@ -92,6 +115,9 @@ ORDER BY salary DESC;</textarea>
 
             <div class="editor-footer">
               <p class="editor-shortcut"><kbd>Ctrl</kbd><span aria-hidden="true">/</span><kbd>⌘</kbd> + <kbd>Enter</kbd> to run</p>
+              <label class="script-policy" for="script-error-policy">On statement error
+                <select id="script-error-policy"><option value="stop">Stop script</option><option value="continue">Continue script</option></select>
+              </label>
               <div class="editor-actions">
                 <button class="button button--quiet" id="clear-query" type="button">Clear</button>
                 <button class="button button--quiet" id="check-challenge" type="button" hidden>Check answer</button>
@@ -142,7 +168,7 @@ ORDER BY salary DESC;</textarea>
 
       <footer class="lab-footer">
         <p><strong>Learning note:</strong> SQL.js runs SQLite in the browser. This lab uses familiar MySQL-style SELECT queries; a few MySQL-specific features may behave differently.</p>
-        <p>Only SELECT statements are allowed. Results are limited to 100 displayed rows.</p>
+        <p id="mode-safety-note">Query Mode is read-only. Sandbox Mode uses a separate temporary database and resets when the page reloads.</p>
       </footer>
     </main>
 
@@ -167,6 +193,18 @@ ORDER BY salary DESC;</textarea>
           <li><span>09</span><code>LIMIT</code><p>Keep only the requested number of rows.</p></li>
         </ol>
         <p class="dialog-note">This is the logical order used to explain a query. A database engine may choose a different physical execution plan.</p>
+      </form>
+    </dialog>
+
+    <dialog class="confirm-write-dialog" id="confirm-write-dialog" aria-labelledby="confirm-write-title">
+      <form method="dialog" class="confirm-write-card">
+        <p class="eyebrow eyebrow--small">SAFE UPDATE CHECK</p>
+        <h2 id="confirm-write-title">This statement affects every row</h2>
+        <p id="confirm-write-copy">Review the affected row count before continuing.</p>
+        <div class="dialog-actions">
+          <button class="button button--quiet" value="cancel">Cancel</button>
+          <button class="button button--primary" id="confirm-write-run" value="confirm">Run anyway</button>
+        </div>
       </form>
     </dialog>
 

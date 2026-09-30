@@ -30,6 +30,15 @@ const stepsEmpty = $('.steps-empty')
 const preview = $('#table-preview')
 const schemaTables = $('#schema-tables')
 const cheatsheetDialog = $('#cheatsheet-dialog')
+const queryModeButton = $('#query-mode')
+const sandboxModeButton = $('#sandbox-mode')
+const modeCopy = $('#mode-copy')
+const modeSafetyNote = $('#mode-safety-note')
+const transactionStatus = $('#transaction-status')
+const undoButton = $('#undo-sandbox')
+const redoButton = $('#redo-sandbox')
+const writeConfirmDialog = $('#confirm-write-dialog')
+const writeConfirmCopy = $('#confirm-write-copy')
 
 const examples = {
   where: `SELECT name, salary
@@ -53,6 +62,37 @@ ORDER BY employee_count DESC, department_name;`,
 FROM orders
 ORDER BY amount DESC
 LIMIT 5;`,
+  'window-ranking': `SELECT name, department_id, salary,
+       RANK() OVER (PARTITION BY department_id ORDER BY salary DESC) AS department_rank
+FROM employees
+ORDER BY department_id, department_rank;`,
+  hierarchy: `WITH RECURSIVE org AS (
+  SELECT id, name, manager_id, 0 AS depth
+  FROM employees
+  WHERE manager_id IS NULL
+  UNION ALL
+  SELECT e.id, e.name, e.manager_id, org.depth + 1
+  FROM employees AS e
+  JOIN org ON e.manager_id = org.id
+)
+SELECT id, name, manager_id, depth
+FROM org
+ORDER BY depth, id;`,
+  'sandbox-insert': `INSERT INTO departments (name, location)
+VALUES ('Finance', 'Delhi');`,
+  'sandbox-update': `UPDATE employees
+SET salary = salary * 1.05
+WHERE id = 2;`,
+  'sandbox-delete': `DELETE FROM orders
+WHERE id = 14;`,
+  'sandbox-transaction': `BEGIN;
+UPDATE employees SET salary = salary + 5000 WHERE id = 2;
+ROLLBACK;`,
+  'sandbox-create': `CREATE TABLE projects (
+  id INTEGER PRIMARY KEY AUTO_INCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  lead_id INTEGER REFERENCES employees(id)
+);`,
 }
 
 let workerClient = null
@@ -63,13 +103,15 @@ let editor = null
 let challenges = []
 let selectedChallenge = null
 let failedAttempts = 0
-let lastSuccessfulRun = null
 let activeStepIndex = 0
 let activeSteps = []
 let autoplayTimer = null
 let markedErrorLine = null
 let solutionVisible = false
 let hintVisible = false
+let currentMode = 'query'
+let querySchema = []
+let sandboxSchema = []
 
 const codeEditor = createEditor()
 configureTabs()
@@ -88,6 +130,7 @@ class SqlWorkerClient {
     this.readyPromise = null
     this.isReady = false
     this.restarting = false
+    this.sandboxSnapshot = null
   }
 
   start() {
@@ -103,7 +146,7 @@ class SqlWorkerClient {
       event.preventDefault()
       this.handleWorkerFailure(new Error('The SQL worker stopped unexpectedly. Retry the engine and run your query again.'))
     })
-    await this.sendRaw('init', { schemaSql: this.schemaSql }, 15000)
+    this.initResult = await this.sendRaw('init', { schemaSql: this.schemaSql, sandboxSnapshot: this.sandboxSnapshot }, 15000)
     this.isReady = true
     return true
   }
@@ -141,7 +184,7 @@ class SqlWorkerClient {
         reject(error)
         if (type !== 'init') this.restart(error)
       }, timeout)
-      this.pending.set(requestId, { resolve, reject, timer, type })
+      this.pending.set(requestId, { resolve, reject, timer, type, payload })
       this.worker.postMessage({ requestId, type, payload })
     })
   }
@@ -157,6 +200,7 @@ class SqlWorkerClient {
       pending.reject(error)
       return
     }
+    if (message.result?.sandboxSnapshot instanceof Uint8Array) this.sandboxSnapshot = message.result.sandboxSnapshot
     pending.resolve(message.result)
   }
 
@@ -290,6 +334,10 @@ function configureActions() {
   clearButton.addEventListener('click', clearQuery)
   checkChallengeButton.addEventListener('click', () => runQuery({ checkChallenge: true }))
   $('#reset-database').addEventListener('click', resetDatabase)
+  queryModeButton.addEventListener('click', () => setExecutionMode('query'))
+  sandboxModeButton.addEventListener('click', () => setExecutionMode('sandbox'))
+  undoButton.addEventListener('click', () => changeSandboxHistory('undo'))
+  redoButton.addEventListener('click', () => changeSandboxHistory('redo'))
   $('#cheatsheet-button').addEventListener('click', () => cheatsheetDialog.showModal())
 
   $('#example-select').addEventListener('change', (event) => {
@@ -306,6 +354,84 @@ function configureActions() {
   challengeSelect.addEventListener('change', () => selectChallenge(challengeSelect.value))
   hintButton.addEventListener('click', toggleHint)
   solutionButton.addEventListener('click', toggleSolution)
+}
+
+async function setExecutionMode(mode) {
+  if (mode !== 'query' && mode !== 'sandbox') return
+  if (isQueryRunning) {
+    setQueryMessage('Wait for the current run to finish before changing modes.', 'warning')
+    return
+  }
+  if (currentMode === mode) return
+  currentMode = mode
+  document.body.dataset.mode = mode
+  queryModeButton.classList.toggle('is-active', mode === 'query')
+  sandboxModeButton.classList.toggle('is-active', mode === 'sandbox')
+  queryModeButton.setAttribute('aria-pressed', String(mode === 'query'))
+  sandboxModeButton.setAttribute('aria-pressed', String(mode === 'sandbox'))
+  modeCopy.textContent = mode === 'query'
+    ? 'Query Mode runs read-only queries against the challenge data.'
+    : 'Sandbox Mode runs editable SQL on a separate temporary copy of the sample data.'
+  modeSafetyNote.textContent = mode === 'query'
+    ? 'Query Mode is read-only. Challenges always use this untouched database.'
+    : 'Sandbox changes stay in this browser tab, can be undone, and never touch challenge data.'
+  $('#example-select').querySelectorAll('option[data-mode]').forEach((option) => {
+    option.hidden = option.dataset.mode !== mode
+  })
+  $('#editor-title').textContent = mode === 'sandbox' ? 'Try SQL statements' : 'Try a query'
+  if (runButton.lastChild?.nodeType === Node.TEXT_NODE) runButton.lastChild.textContent = mode === 'sandbox' ? ' Run script' : ' Run query'
+  checkChallengeButton.hidden = mode === 'sandbox' || !selectedChallenge
+  hintButton.hidden = mode === 'sandbox' || !selectedChallenge
+  solutionButton.hidden = mode === 'sandbox' || failedAttempts < 2
+  challengeSelect.disabled = mode === 'sandbox'
+  challengePrompt.textContent = mode === 'sandbox'
+    ? 'Challenges run only against the untouched Query Mode database.'
+    : selectedChallenge
+      ? `${selectedChallenge.difficulty} · ${selectedChallenge.description}`
+      : 'Choose a challenge to practice and check your result.'
+  await refreshSandboxStatus()
+  renderSchemaTables()
+  preview.replaceChildren(createNode('p', 'preview-placeholder', 'Choose a table above to inspect a few rows.'))
+  clearDisplayedResults(mode === 'query'
+    ? 'Query Mode is ready. It can read the original challenge data.'
+    : 'Sandbox Mode is ready. Try INSERT, UPDATE, DELETE, CREATE TABLE, or a transaction script.')
+  setQueryMessage(mode === 'query' ? 'Query Mode selected. Only read-only SELECT queries can run here.' : 'Sandbox Mode selected. Your changes are isolated from challenge data.', 'neutral')
+}
+
+async function refreshSandboxStatus() {
+  if (!workerClient || !engineReady) return
+  try {
+    const status = await workerClient.request('history')
+    sandboxSchema = status.schema || sandboxSchema
+    updateSandboxControls(status)
+  } catch {
+    updateSandboxControls({ undo: false, redo: false, activeTransaction: false })
+  }
+}
+
+function updateSandboxControls(status = {}) {
+  const enabled = currentMode === 'sandbox'
+  transactionStatus.hidden = !enabled
+  transactionStatus.textContent = status.activeTransaction ? 'Transaction open' : 'Autocommit'
+  transactionStatus.dataset.active = String(Boolean(status.activeTransaction))
+  undoButton.hidden = !enabled
+  redoButton.hidden = !enabled
+  undoButton.disabled = !status.undo || Boolean(status.activeTransaction)
+  redoButton.disabled = !status.redo || Boolean(status.activeTransaction)
+}
+
+async function changeSandboxHistory(action) {
+  if (currentMode !== 'sandbox' || !workerClient || !engineReady) return
+  try {
+    const state = await workerClient.request(action)
+    sandboxSchema = state.schema || sandboxSchema
+    updateSandboxControls(state)
+    renderSchemaTables()
+    clearDisplayedResults(action === 'undo' ? 'Sandbox change undone.' : 'Sandbox change redone.')
+    setQueryMessage(state.label ? `${action === 'undo' ? 'Undid' : 'Redid'}: ${state.label}.` : `${action === 'undo' ? 'Undo' : 'Redo'} complete.`, 'success')
+  } catch (error) {
+    setQueryMessage(error.message || 'Could not restore that sandbox state.', 'error')
+  }
 }
 
 async function loadDependencies() {
@@ -330,9 +456,12 @@ async function loadDependencies() {
     workerClient = new SqlWorkerClient(schemaSqlCache)
     await workerClient.start()
     engineReady = true
+    querySchema = workerClient.initResult?.schema || []
+    sandboxSchema = workerClient.initResult?.sandboxSchema || []
     runButton.disabled = false
     retryButton.hidden = true
     renderSchemaTables()
+    await refreshSandboxStatus()
     setQueryMessage('Database ready. Try the example or choose a table to explore.', 'success')
 
     if (!parser) {
@@ -347,10 +476,12 @@ async function loadDependencies() {
 async function resetDatabase() {
   if (!workerClient || !engineReady) return
   try {
-    await workerClient.request('reset')
-    lastSuccessfulRun = null
+    const resetState = await workerClient.request('reset')
+    querySchema = resetState.schema || []
+    sandboxSchema = resetState.sandboxSchema || []
     clearEditorError()
     renderSchemaTables()
+    await refreshSandboxStatus()
     preview.replaceChildren(createNode('p', 'preview-placeholder', 'Choose a table above to inspect a few rows.'))
     clearDisplayedResults('The sample data reset. Run a query to see results from the original data.')
     setQueryMessage('Sample database reset. Your next query starts with the original data.', 'success')
@@ -361,7 +492,12 @@ async function resetDatabase() {
 
 function renderSchemaTables() {
   schemaTables.replaceChildren()
-  Object.entries(SCHEMA_TABLES).forEach(([tableName, columns]) => {
+  const schema = currentMode === 'sandbox' ? sandboxSchema : querySchema
+  const visibleSchema = schema.filter((table) => table.type !== 'index')
+  const tables = visibleSchema.length
+    ? visibleSchema.map((table) => [table.name, table.columns || []])
+    : Object.entries(SCHEMA_TABLES).map(([name, columns]) => [name, columns.map(([columnName, type]) => ({ name: columnName, type }))])
+  tables.forEach(([tableName, columns]) => {
     const button = createNode('button', 'schema-table-button')
     button.type = 'button'
     button.setAttribute('aria-expanded', 'false')
@@ -369,7 +505,7 @@ function renderSchemaTables() {
     button.append(createNode('span', 'table-glyph', '▤'))
     const label = createNode('span', 'schema-table-label')
     label.append(createNode('strong', '', tableName))
-    label.append(createNode('small', '', `${columns.length} columns`))
+    label.append(createNode('small', '', `${columns.length} columns${schema.find((table) => table.name === tableName)?.type === 'view' ? ' · view' : ''}`))
     button.append(label)
     button.append(createNode('span', 'schema-chevron', '›'))
     button.addEventListener('click', () => showTablePreview(tableName, button))
@@ -385,7 +521,8 @@ async function showTablePreview(tableName, activeButton) {
   })
 
   try {
-    const result = await workerClient.request('run', { sql: `SELECT * FROM \"${tableName}\" LIMIT 5` })
+    const rawResult = await workerClient.request('run', { sql: `SELECT * FROM "${tableName}" LIMIT 5`, mode: currentMode })
+    const result = unwrapWorkerResult(rawResult)
     preview.replaceChildren()
     const heading = createNode('div', 'preview-heading')
     heading.append(createNode('h3', '', `${tableName} <span>sample</span>`))
@@ -417,7 +554,6 @@ function selectChallenge(challengeId) {
   failedAttempts = 0
   solutionVisible = false
   hintVisible = false
-  lastSuccessfulRun = null
   solutionButton.hidden = true
   solutionButton.textContent = 'Show solution'
   checkChallengeButton.hidden = !selectedChallenge
@@ -455,7 +591,6 @@ function clearQuery() {
   if (isQueryRunning) workerClient?.cancel()
   codeEditor.setValue('')
   codeEditor.clearError()
-  lastSuccessfulRun = null
   activeSteps = []
   resultCount.textContent = ''
   executionMeta.textContent = ''
@@ -471,6 +606,8 @@ function setRunningState(running) {
   cancelButton.hidden = !running
   clearButton.disabled = running
   checkChallengeButton.disabled = running
+  queryModeButton.disabled = running
+  sandboxModeButton.disabled = running
 }
 
 function clearDisplayedResults(message) {
@@ -481,21 +618,26 @@ function clearDisplayedResults(message) {
   activeSteps = []
 }
 
-async function runQuery({ checkChallenge = false } = {}) {
+async function runQuery({ checkChallenge = false, confirmed = false } = {}) {
   if (!engineReady || isQueryRunning) return null
+  if (checkChallenge && currentMode !== 'query') return null
   const sql = codeEditor.getValue()
   clearEditorError()
   stopAutoplay()
 
-  let inspection
-  try {
-    inspection = inspectQuery(sql, parser)
-  } catch (error) {
-    const line = findErrorLine(sql, error)
-    markEditorError(line)
-    clearDisplayedResults('This query did not run. Fix the SQL and run it again.')
-    setQueryMessage(error.message, 'error')
-    return null
+  let inspection = null
+  if (currentMode === 'query') {
+    try {
+      inspection = inspectQuery(sql, parser)
+    } catch (error) {
+      const line = findErrorLine(sql, error)
+      markEditorError(line)
+      clearDisplayedResults('This query did not run. Fix the SQL and run it again.')
+      setQueryMessage(error.message, 'error')
+      return null
+    }
+  } else if (/^\s*(?:SELECT|WITH)\b/i.test(sql)) {
+    try { inspection = inspectQuery(sql, parser) } catch { /* Worker returns the authoritative sandbox parse error. */ }
   }
 
   isQueryRunning = true
@@ -504,14 +646,78 @@ async function runQuery({ checkChallenge = false } = {}) {
   const startedAt = performance.now()
   const operation = workerClient.operationGeneration
   try {
-    const result = await workerClient.request('run', { sql }, QUERY_TIMEOUT_MS, operation)
-    const elapsed = performance.now() - startedAt
-    let stepPlan = { available: false, steps: [], reason: inspection.reason || 'Step view not available for this query yet.' }
-    if (inspection.ast && inspection.visualizationAvailable) {
-      stepPlan = await buildExecutionSteps(parser, inspection.ast, (statement) => workerClient.request('run', { sql: statement }, QUERY_TIMEOUT_MS, operation))
+    const workerResult = await workerClient.request('run', {
+      sql,
+      mode: currentMode,
+      confirmed,
+      continueOnError: $('#script-error-policy').value === 'continue',
+    }, QUERY_TIMEOUT_MS, operation)
+    if (workerResult.confirmationRequired) {
+      isQueryRunning = false
+      setRunningState(false)
+      const approved = await confirmWholeTableWrite(workerResult.confirmationRequired)
+      if (approved) return await runQuery({ confirmed: true })
+      clearDisplayedResults('The statement was canceled. No rows were changed.')
+      setQueryMessage('Canceled. No rows were changed.', 'neutral')
+      return null
     }
 
-    lastSuccessfulRun = { sql, result, ast: inspection.ast, stepPlan, elapsed }
+    const elapsed = performance.now() - startedAt
+    if (currentMode === 'sandbox') {
+      sandboxSchema = workerResult.schema || sandboxSchema
+      updateSandboxControls({
+        undo: workerResult.history?.undo,
+        redo: workerResult.history?.redo,
+        activeTransaction: workerResult.transaction?.active,
+      })
+      renderSchemaTables()
+      const result = workerResult.finalResult
+      const hasStatementError = workerResult.statements.some((statement) => !statement.ok)
+      let stepPlan = { available: false, steps: [], reason: 'This script has no visual steps.' }
+      const singleRead = workerResult.statements.length === 1 && workerResult.statements[0].type === 'select'
+      if (singleRead && inspection?.ast && inspection.visualizationAvailable) {
+        stepPlan = await buildExecutionSteps(parser, inspection.ast, async (statement) => {
+          const response = await workerClient.request('run', { sql: statement, mode: 'sandbox' }, QUERY_TIMEOUT_MS, operation)
+          return unwrapWorkerResult(response)
+        }, result)
+      } else if (singleRead && inspection && !inspection.visualizationAvailable) {
+        stepPlan = { available: false, steps: [], reason: inspection.reason }
+      } else {
+        stepPlan = createSandboxStepPlan(workerResult)
+      }
+      if (singleRead && result) renderResult(result)
+      else renderSandboxScriptResults(workerResult)
+      resultCount.textContent = singleRead && result
+        ? `${result.totalRows} ${result.totalRows === 1 ? 'row' : 'rows'}${result.truncated ? ' (showing first 5,000)' : ''}`
+        : `${workerResult.statements.length} ${workerResult.statements.length === 1 ? 'statement' : 'statements'} · ${workerResult.statements.reduce((sum, item) => sum + (item.affectedRows || 0), 0)} rows affected${result ? ` · last SELECT ${result.totalRows} rows` : ''}`
+      executionMeta.textContent = `${elapsed.toFixed(1)} ms`
+      setQueryMessage(
+        hasStatementError
+          ? 'Script finished with an error. Review the statement list and its visual trace.'
+          : workerResult.transaction?.active
+            ? 'Script complete. Changes are pending until you COMMIT or ROLLBACK.'
+            : 'Sandbox script complete. Review the before-and-after trace.',
+        hasStatementError ? 'warning' : 'success',
+      )
+      if (stepPlan.available) {
+        renderSteps(stepPlan.steps)
+        activateTab('steps')
+      } else {
+        renderStepUnavailable(stepPlan.reason)
+        activateTab('result')
+      }
+      return result || workerResult
+    }
+
+    const result = workerResult
+    let stepPlan = { available: false, steps: [], reason: inspection.reason || 'Step view not available for this query yet.' }
+    if (inspection.ast && inspection.visualizationAvailable) {
+      stepPlan = await buildExecutionSteps(parser, inspection.ast, async (statement) => {
+        const response = await workerClient.request('run', { sql: statement, mode: 'query' }, QUERY_TIMEOUT_MS, operation)
+        return unwrapWorkerResult(response)
+      }, result)
+    }
+
     renderResult(result)
     executionMeta.textContent = `${elapsed.toFixed(1)} ms`
     resultCount.textContent = `${result.totalRows} ${result.totalRows === 1 ? 'row' : 'rows'}${result.truncated ? ' (showing first 5,000)' : ''}`
@@ -546,6 +752,94 @@ async function runQuery({ checkChallenge = false } = {}) {
   }
 }
 
+function unwrapWorkerResult(response) {
+  return response?.kind === 'script' ? response.finalResult || { columns: [], rows: [], totalRows: 0, truncated: false } : response
+}
+
+async function confirmWholeTableWrite(details) {
+  const items = Array.isArray(details) ? details : [details]
+  const description = items.map((item) => `${item.operation} will affect all ${item.rowCount} rows in ${item.table}.`).join(' ')
+  if (!writeConfirmDialog?.showModal) {
+    return window.confirm(`${description} Run anyway?`)
+  }
+  $('#confirm-write-title').textContent = items.length === 1 ? 'This statement affects every row' : 'These statements affect every row'
+  writeConfirmCopy.textContent = `${description} Add a WHERE clause to target specific rows. Proceed only if you intend to change every listed row.`
+  return new Promise((resolve) => {
+    writeConfirmDialog.addEventListener('close', () => resolve(writeConfirmDialog.returnValue === 'confirm'), { once: true })
+    writeConfirmDialog.showModal()
+  })
+}
+
+function createSandboxStepPlan(script) {
+  const steps = script.statements.map((statement) => {
+    const type = statement.type.toUpperCase()
+    const kind = !statement.ok ? 'sandbox-error'
+      : ['create', 'alter', 'drop'].includes(statement.type) ? 'sandbox-schema'
+        : statement.type === 'transaction' ? 'sandbox-transaction'
+          : ['insert', 'replace', 'update', 'delete', 'truncate'].includes(statement.type) ? 'sandbox-write'
+            : 'sandbox-statement'
+    const data = statement.type === 'select'
+      ? { columns: statement.columns, rows: statement.rows, totalRows: statement.totalRows }
+      : statement.after || statement.before || { columns: [], rows: [], totalRows: 0 }
+    const result = { columns: data.columns || [], rows: data.rows || [], totalRows: data.totalRows || 0, truncated: Boolean(data.truncated) }
+    const count = statement.affectedRows || 0
+    const description = !statement.ok
+      ? [statement.error, statement.note].filter(Boolean).join(' ')
+      : kind === 'sandbox-write'
+        ? `${type} affected ${count} ${count === 1 ? 'row' : 'rows'}. Compare the source snapshot with the resulting table below.`
+        : kind === 'sandbox-schema'
+          ? `${type} changed the schema. The database browser reflects the schema after this statement.`
+          : kind === 'sandbox-transaction'
+            ? `Transaction control changed the commit state to ${statement.transaction?.active ? 'pending' : 'autocommit'}. The before-and-after snapshots show whether the changes stayed or rolled back.`
+            : 'This statement ran inside the isolated sandbox database.'
+    return {
+      id: `sandbox-${statement.index}`,
+      title: `${String(statement.index).padStart(2, '0')} · ${type}`,
+      description,
+      sql: statement.sql,
+      kind,
+      result,
+      before: statement.before,
+      after: statement.after,
+      statement,
+      schemaBefore: statement.schemaBefore,
+      schemaAfter: statement.schemaAfter,
+      input: statement.before,
+    }
+  })
+  return { available: steps.length > 0, reason: steps.length ? '' : 'No statement trace was produced.', steps }
+}
+
+function renderSandboxScriptResults(script) {
+  resultContent.replaceChildren()
+  const list = createNode('div', 'script-results')
+  script.statements.forEach((statement) => {
+    const card = createNode('article', 'script-statement')
+    const head = createNode('div', 'script-statement-head')
+    const title = createNode('div')
+    title.append(createNode('h3', '', `Statement ${statement.index} · ${statement.type.toUpperCase()}`))
+    title.append(createNode('p', '', statement.sql))
+    const status = !statement.ok ? 'Error'
+      : statement.columns?.length ? `${statement.totalRows} result rows`
+        : statement.type === 'transaction' ? (statement.transaction?.active ? 'Transaction open' : 'Transaction ended')
+          : ['create', 'alter', 'drop'].includes(statement.type) ? 'Schema changed'
+            : `${statement.affectedRows || 0} rows affected`
+    const badge = createNode('span', `script-result-badge${statement.ok ? '' : ' is-error'}`, status)
+    head.append(title, badge)
+    card.append(head)
+    if (!statement.ok) card.append(createNode('p', 'script-error', statement.error))
+    else if (statement.columns?.length) card.append(renderTable({ columns: statement.columns, rows: statement.rows, totalRows: statement.totalRows }, { rowLimit: 20 }))
+    else if (statement.before || statement.after) card.append(renderDiffTable(statement.before, statement.after))
+    else if (['create', 'alter', 'drop'].includes(statement.type)) card.append(renderSchemaDiff(statement.schemaBefore || [], statement.schemaAfter || []))
+    if (statement.note) card.append(createNode('p', 'script-state-note', statement.note))
+    card.append(createNode('p', 'script-state-note', statement.transaction?.active ? 'Changes are pending in this transaction.' : 'Autocommit is active; this statement is committed.'))
+    card.append(createNode('p', 'script-state-note', `Completed in ${Number(statement.durationMs || 0).toFixed(1)} ms.`))
+    list.append(card)
+  })
+  if (!script.statements.length) list.append(createEmptyState('No statements ran', 'The script was canceled before it changed any rows.'))
+  resultContent.append(list)
+}
+
 async function gradeChallenge(result) {
   if (!selectedChallenge || !workerClient) return
   let expected
@@ -573,7 +867,6 @@ async function gradeChallenge(result) {
 function setFeedback(message, tone) {
   const feedbackText = createNode('p', 'feedback-message', message)
   feedbackText.dataset.tone = tone
-  const hint = challengeFeedbackCopy.querySelector('.hint-copy')
   const solution = challengeFeedbackCopy.querySelector('.solution-copy')
   challengeFeedbackCopy.replaceChildren(feedbackText)
   if (hintVisible && selectedChallenge) challengeFeedbackCopy.append(createNode('p', 'hint-copy', `Hint: ${selectedChallenge.hint}`))
@@ -605,7 +898,7 @@ function compareResults(actual, expected, orderMatters) {
 }
 
 function normalizeColumn(column) {
-  return String(column).trim().replace(/[`"\[\]]/g, '').toLowerCase()
+  return String(column).trim().replace(/[`"[\]]/g, '').toLowerCase()
 }
 
 function normalizeCell(value) {
@@ -708,7 +1001,13 @@ function showStep(index) {
   header.append(rowCounts)
   detail.append(header, createNode('p', 'step-explanation', step.description))
 
-  if (step.kind === 'join') renderJoinVisual(detail, step)
+  if (step.kind === 'window') renderWindowVisual(detail, step)
+  else if (step.kind === 'hierarchy') renderHierarchyVisual(detail, step)
+  else if (step.kind === 'sandbox-write') renderSandboxWriteVisual(detail, step)
+  else if (step.kind === 'sandbox-schema') renderSandboxSchemaVisual(detail, step)
+  else if (step.kind === 'sandbox-transaction') renderSandboxTransactionVisual(detail, step)
+  else if (step.kind === 'sandbox-error') renderSandboxErrorVisual(detail, step)
+  else if (step.kind === 'join') renderJoinVisual(detail, step)
   else if (step.kind === 'groups') renderGroupVisual(detail, step)
   else if (step.id === 'where') renderWhereVisual(detail, step)
   else if (step.id === 'having') renderHavingVisual(detail, step)
@@ -723,6 +1022,171 @@ function showStep(index) {
   sqlBlock.append(createNode('code', '', step.sql))
   sqlNote.append(sqlSummary, sqlBlock)
   detail.append(sqlNote)
+}
+
+function renderWindowVisual(parent, step) {
+  parent.append(createNode('h4', 'visual-subheading', 'Window functions and their specification'))
+  const cards = createNode('div', 'window-function-list')
+  ;(step.functions || []).forEach((item) => {
+    const card = createNode('article', 'window-function-card')
+    card.append(createNode('strong', '', `${item.name}${item.alias ? ` → ${item.alias}` : ''}`))
+    card.append(createNode('span', '', item.specificationName ? `Named window: ${item.specificationName}` : 'Inline window specification'))
+    if (item.partition?.length) card.append(createNode('span', '', `PARTITION BY ${item.partition.join(', ')}`))
+    if (item.order) card.append(createNode('span', '', `ORDER BY ${item.order}`))
+    if (item.frame) card.append(createNode('span', '', `Frame: ${item.frame}`))
+    cards.append(card)
+  })
+  parent.append(cards)
+  parent.append(createNode('h4', 'visual-subheading', 'Rows inside each partition'))
+  parent.append(createNode('p', 'visual-caption', 'The same partition is evaluated as a group, while every original row remains in the output. The final columns show the window values the engine calculated.'))
+  ;(step.partitions || []).forEach((partition, index) => {
+    const details = createNode('details', 'window-partition')
+    details.open = index === 0
+    details.append(createNode('summary', '', `${partition.label} · ${partition.rows.length} ${partition.rows.length === 1 ? 'row' : 'rows'}`))
+    const result = { columns: step.result.columns, rows: partition.rows, totalRows: partition.rows.length }
+    details.append(renderTable(result, { rowLimit: 40, numbered: true, selectedColumns: (step.functions || []).map((item) => item.alias).filter(Boolean) }))
+    parent.append(details)
+  })
+  if (!(step.partitions || []).length) parent.append(renderTable(step.result, { rowLimit: 40, numbered: true }))
+}
+
+function renderHierarchyVisual(parent, step) {
+  parent.append(createNode('h4', 'visual-subheading', 'Recursive levels'))
+  parent.append(createNode('p', 'visual-caption', `The recursive member follows ${step.parentColumn} to build levels. ${step.depthColumn} identifies each pass through the hierarchy.`))
+  const levels = createNode('div', 'hierarchy-levels')
+  step.levels.forEach((level) => {
+    const card = createNode('section', 'hierarchy-level')
+    card.dataset.depth = String(Math.min(level.depth, 3))
+    card.append(createNode('h4', '', `Level ${level.depth} · ${level.rows.length} ${level.rows.length === 1 ? 'row' : 'rows'}`))
+    card.append(renderTable({ columns: step.result.columns, rows: level.rows, totalRows: level.rows.length }, { compact: true, rowLimit: 40 }))
+    levels.append(card)
+  })
+  parent.append(levels)
+}
+
+function renderSandboxWriteVisual(parent, step) {
+  parent.append(createNode('h4', 'visual-subheading', `${step.statement.type.toUpperCase()} · ${step.statement.affectedRows || 0} rows affected`))
+  if (!step.before && !step.after) {
+    parent.append(createNode('p', 'visual-caption', 'The statement changed the schema or did not target a regular table. Inspect the statement result for details.'))
+    return
+  }
+  parent.append(createNode('p', 'visual-caption', 'Row identity comes from SQLite rowid, so duplicate values stay distinct in this before-and-after comparison.'))
+  parent.append(renderDiffTable(step.before, step.after))
+}
+
+function renderSandboxSchemaVisual(parent, step) {
+  parent.append(createNode('h4', 'visual-subheading', 'Schema before and after'))
+  parent.append(createNode('p', 'visual-caption', 'Green entries were added, red entries were removed, and neutral entries remain.'))
+  parent.append(renderSchemaDiff(step.schemaBefore || [], step.schemaAfter || []))
+}
+
+function renderSandboxTransactionVisual(parent, step) {
+  const active = Boolean(step.statement.transaction?.active)
+  parent.append(createNode('h4', 'visual-subheading', active ? 'Changes are pending' : 'Transaction state after this statement'))
+  parent.append(createNode('p', 'visual-caption', active
+    ? 'These writes are visible in the sandbox connection but are not committed. ROLLBACK restores the earlier table state.'
+    : 'The transaction control statement ended the pending transaction. Compare the table snapshots to see what remained.'))
+  const before = step.statement.databaseBefore || {}
+  const after = step.statement.databaseAfter || {}
+  const names = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort()
+  if (!names.length && (step.before || step.after)) parent.append(renderDiffTable(step.before, step.after))
+  names.forEach((name, index) => {
+    const details = createNode('details', 'window-partition')
+    details.open = index === 0
+    details.append(createNode('summary', '', `${name} · transaction snapshot`))
+    details.append(renderDiffTable(before[name], after[name]))
+    parent.append(details)
+  })
+}
+
+function renderSandboxErrorVisual(parent, step) {
+  parent.append(createNode('p', 'script-error', step.statement.error || 'This statement failed and did not complete.'))
+  if (step.statement.note) parent.append(createNode('p', 'visual-caption', step.statement.note))
+  if (step.before || step.after) parent.append(renderDiffTable(step.before, step.after))
+}
+
+function renderDiffTable(before, after) {
+  const wrapper = createNode('div', 'data-table-wrap')
+  const oldRows = before?.rows || []
+  const newRows = after?.rows || []
+  const columns = after?.columns?.length ? after.columns : before?.columns || []
+  if (!columns.length) {
+    wrapper.append(createNode('p', 'empty-inline', 'There are no table rows to compare.'))
+    return wrapper
+  }
+  const oldIds = before?.rowIds || oldRows.map((_row, index) => `old-${index}`)
+  const newIds = after?.rowIds || newRows.map((_row, index) => `new-${index}`)
+  const oldIndex = new Map(oldIds.map((id, index) => [String(id), index]))
+  const newIndex = new Map(newIds.map((id, index) => [String(id), index]))
+  const identities = [...oldIds.map(String), ...newIds.map(String).filter((id) => !oldIndex.has(id))]
+  const table = createNode('table', 'data-table')
+  const head = createNode('thead')
+  const header = createNode('tr')
+  header.append(createNode('th', '', 'Change'))
+  columns.forEach((column) => header.append(createNode('th', '', column)))
+  head.append(header)
+  const body = createNode('tbody')
+  identities.slice(0, 100).forEach((identity) => {
+    const oldRowIndex = oldIndex.get(identity)
+    const newRowIndex = newIndex.get(identity)
+    const oldRow = oldRowIndex === undefined ? null : oldRows[oldRowIndex]
+    const newRow = newRowIndex === undefined ? null : newRows[newRowIndex]
+    const changed = oldRow && newRow && oldRow.some((value, index) => stableJson(value) !== stableJson(newRow[index]))
+    const row = createNode('tr', changed ? 'row-updated' : !oldRow ? 'row-inserted' : !newRow ? 'row-deleted' : 'row-unchanged')
+    row.append(createNode('td', 'row-status-cell', !oldRow ? 'Inserted' : !newRow ? 'Deleted' : changed ? 'Updated' : 'Unchanged'))
+    columns.forEach((_column, columnIndex) => {
+      const cell = createNode('td')
+      if (changed && stableJson(oldRow[columnIndex]) !== stableJson(newRow[columnIndex])) {
+        const oldValue = createNode('span', 'diff-before')
+        appendValue(oldValue, oldRow[columnIndex])
+        const newValue = createNode('span', 'diff-after')
+        appendValue(newValue, newRow[columnIndex])
+        cell.append(oldValue, createNode('span', 'diff-arrow', ' → '), newValue)
+      } else appendValue(cell, newRow ? newRow[columnIndex] : oldRow[columnIndex])
+      row.append(cell)
+    })
+    body.append(row)
+  })
+  table.append(head, body)
+  wrapper.append(table)
+  const total = Math.max(before?.totalRows || 0, after?.totalRows || 0)
+  if (identities.length > 100 || before?.truncated || after?.truncated) wrapper.append(createNode('p', 'table-overflow-note', `Showing ${Math.min(identities.length, 100)} of up to ${total} rows.`))
+  return wrapper
+}
+
+function renderSchemaDiff(before, after) {
+  const list = createNode('div', 'schema-change-list')
+  const oldTables = new Map(before.map((table) => [table.name, table]))
+  const newTables = new Map(after.map((table) => [table.name, table]))
+  const names = [...new Set([...oldTables.keys(), ...newTables.keys()])].sort()
+  names.forEach((name) => {
+    const oldTable = oldTables.get(name)
+    const newTable = newTables.get(name)
+    if (!oldTable) {
+      list.append(createNode('span', 'schema-change-chip is-added', `+ ${newTable.type} ${name}`))
+      newTable.columns.forEach((column) => list.append(createNode('span', 'schema-change-chip is-added', `+ ${name}.${column.name} ${column.type}`)))
+    } else if (!newTable) {
+      list.append(createNode('span', 'schema-change-chip is-removed', `− ${oldTable.type} ${name}`))
+      oldTable.columns.forEach((column) => list.append(createNode('span', 'schema-change-chip is-removed', `− ${name}.${column.name} ${column.type}`)))
+    }
+    else {
+      if (oldTable.type !== newTable.type) {
+        list.append(createNode('span', 'schema-change-chip', `~ ${name}: ${oldTable.type} → ${newTable.type}`))
+        return
+      }
+      const oldColumns = new Map(oldTable.columns.map((column) => [column.name, column.type]))
+      const newColumns = new Map(newTable.columns.map((column) => [column.name, column.type]))
+      ;[...new Set([...oldColumns.keys(), ...newColumns.keys()])].sort().forEach((column) => {
+        const oldType = oldColumns.get(column)
+        const newType = newColumns.get(column)
+        if (oldType === undefined) list.append(createNode('span', 'schema-change-chip is-added', `+ ${name}.${column} ${newType}`))
+        else if (newType === undefined) list.append(createNode('span', 'schema-change-chip is-removed', `− ${name}.${column}`))
+        else if (oldType !== newType) list.append(createNode('span', 'schema-change-chip', `~ ${name}.${column} ${oldType} → ${newType}`))
+      })
+    }
+  })
+  if (!names.length) list.append(createNode('span', 'empty-inline', 'No tables are present.'))
+  return list
 }
 
 function renderWhereVisual(parent, step) {

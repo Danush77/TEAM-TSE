@@ -28,32 +28,68 @@ never uploaded. The vendor folder includes the libraries' license texts.
 
 ## How the visual stage builder works
 
-`engine.js` asks node-sql-parser to parse the user's one-statement SELECT query
-into a MySQL-flavored AST. It builds partial SELECT statements from that AST,
-adding clauses in logical order. `app.js` sends the final query and each
-partial query to `worker.js`, which verifies each request again, prepares only
-SELECT ASTs, and executes them against the in-memory sql.js database. The
-database is switched to SQLite `query_only` mode after its schema and sample
-rows load. The worker returns at most 5,000 rows per request and is terminated
-and recreated if a request exceeds the configurable 5-second timeout or the
-learner cancels it. Results shown in the page remain limited to 100 rows.
+The lab has two visibly separate execution modes. **Query Mode** runs one
+read-only SELECT-family statement against the original challenge database.
+**Sandbox Mode** runs SQL against a second in-memory database created from the
+same starter schema and data. Sandbox writes never change the challenge data.
+The sandbox starts fresh after a page reload; the page keeps an in-memory
+checkpoint of the latest completed run so a worker restart does not erase it.
+Undo and Redo retain up to 30 changes under a 32 MB history cap.
 
-SQL.js does not expose SQLite's authorizer callback. The lab uses a conservative
-parser allow-list, a semicolon-aware single-statement check, SQLite's
-`query_only` mode, a fixed local schema, and a worker that can be terminated to
-provide layered browser-side protection. This is appropriate for this fixed,
-local teaching database; it is not a replacement for server-side controls when
-connecting to a real database.
+In Query Mode, `engine.js` asks node-sql-parser for a MySQL-flavored AST and
+builds partial SELECT stages for the supported clause visuals. Window queries
+get a partition and calculated-value view. A recursive CTE gets a hierarchy
+view when its result includes an id, a parent id (`manager_id`, `parent_id`, or
+`reports_to`) and a depth/level column. Other CTEs and complex query shapes can
+still return results while the step panel explains why it cannot draw them.
+
+In Sandbox Mode, the worker parses and validates the complete script before
+running any statement. It supports SELECT, INSERT/REPLACE, UPDATE, DELETE,
+TRUNCATE, SQLite-compatible CREATE/ALTER/DROP operations, and transaction and
+savepoint control. It adapts `AUTO_INCREMENT`, `INSERT IGNORE`, and
+`ON DUPLICATE KEY UPDATE` to SQLite forms and labels the MySQL differences.
+Scripts can stop on the first error or continue. Each statement reports its
+result, affected-row count, schema/table snapshots, and transaction state.
+UPDATE, DELETE and TRUNCATE without WHERE require an explicit confirmation.
+Undo/Redo are disabled while a transaction is open; Reset rebuilds both
+in-memory databases from `schema.sql`.
+
+The worker returns at most 5,000 result or trace rows per request and is
+terminated and recreated if a request exceeds the configurable 5-second
+timeout or the learner cancels it. The output table shows at most 100 rows.
+
+SQL.js does not expose SQLite's authorizer callback. Query Mode adds SQLite's
+`query_only` setting to the parser allow-list and single-statement check.
+Sandbox Mode uses a separate database, validates each statement against an
+explicit type allow-list, blocks PRAGMA/ATTACH/DETACH/VACUUM and extension/file
+functions, and caps script length, rows per table, inserts per statement,
+database size, and history memory. These browser-side checks are for this
+teaching sandbox; they are not a substitute for server-side controls on a real
+database. The lab does not send database contents to a server.
 
 The resulting tables and row counts are compared to show filtering, joins,
-grouping, projection, sorting, and limits. The group cards are built from
-group-key values returned by SQL.js. If the parser cannot parse a query or the
-query uses an unsupported structure, the lab explains that the step view is
-unavailable. Unsupported MySQL features and broader SQL diagnostics are being
-added in later upgrade phases.
+grouping, projection, sorting, limits, row writes, schema changes, window
+partitions, and recursive levels. Group cards and DML diffs use values and
+SQLite rowids returned by the worker, so duplicate-valued rows remain distinct
+in before-and-after views. Unsupported MySQL syntax can differ from SQLite;
+the lab shows the final result when it can execute the statement and explains
+the dialect difference where one is known.
 
 The steps describe SQL's **logical** order. A real database may optimize and
 execute a query with a different physical plan.
+
+## Check the lab
+
+From the `courses/` directory, run:
+
+```bash
+npm run test:sql-visual-lab
+```
+
+The Node test suite loads the bundled SQL.js and MySQL parser, then exercises
+mode isolation, CRUD traces, MySQL write adaptation, safe-update confirmation,
+blocked commands, transactions/savepoints, undo/redo, window partitions, and
+recursive hierarchy levels.
 
 ## Add a challenge
 
@@ -90,12 +126,11 @@ after two incorrect, successfully executed attempts.
 3. Review the example queries and expected challenge results against the new
    data. Keep the data small enough for fast browser execution.
 
-Queries are restricted to one SELECT statement. SQLite syntax and behavior are
-close to the MySQL used in lessons, but they are not identical. MySQL-only
-syntax, server behavior, permissions, and query plans are not simulated.
-Complex subqueries, CTEs, set operations, and window functions can still show
-their final result when SQL.js accepts them, but do not receive an intermediate
-step breakdown. The output view shows at most 100 rows.
+Query Mode remains restricted to one SELECT statement. Sandbox Mode is an
+in-memory teaching database, not a MySQL server: SQLite-specific behavior,
+permissions, optimizer plans, and some MySQL multi-table write forms are not
+simulated. Window and recursive-hierarchy visuals are educational summaries,
+not physical execution plans. The output view shows at most 100 rows.
 
 ## Five queries for checking the visual stages
 

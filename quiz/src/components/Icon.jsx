@@ -20,6 +20,8 @@ const paths = {
   arrowRight: 'M5 12h14M13 5l7 7-7 7',
   clock: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 5v5l3 3',
   refresh: 'M4 4v6h6M20 20v-6h-6M4.5 15a8 8 0 0 0 14.5 3.4M19.5 9A8 8 0 0 0 5 5.6',
+  sun: 'M12 3v2m0 14v2M5.64 5.64l1.42 1.42m9.88 9.88 1.42 1.42M3 12h2m14 0h2M5.64 18.36l1.42-1.42m9.88-9.88 1.42-1.42M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',
+  moon: 'M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 8.5 8.5 0 1 0 20.5 14.5Z',
 }
 
 export default function Icon({ name, size = 20, className = '', strokeWidth = 1.8 }) {
@@ -35,6 +37,8 @@ export default function Icon({ name, size = 20, className = '', strokeWidth = 1.
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      aria-hidden="true"
+      focusable="false"
     >
       {d.split(/(?= M)/).map((seg, i) => (
         <path key={i} d={seg} />

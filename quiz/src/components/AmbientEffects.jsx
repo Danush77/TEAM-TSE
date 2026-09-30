@@ -35,6 +35,18 @@ export default function AmbientEffects({ moduleId }) {
     let previousFrame = 0
     let animationFrame
     let streams = []
+    let isLightTheme = document.documentElement.dataset.theme === 'light'
+
+    // The canvas paints its own colors, so CSS theme colors cannot reach the
+    // binary rain. Watch the existing theme attribute and switch to a darker,
+    // higher-contrast green when the page background is light.
+    const themeObserver = new MutationObserver(() => {
+      isLightTheme = document.documentElement.dataset.theme === 'light'
+    })
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    })
 
     const resize = () => {
       width = window.innerWidth
@@ -70,10 +82,18 @@ export default function AmbientEffects({ moduleId }) {
           if (y < -FONT_SIZE || y > height + FONT_SIZE) continue
 
           if (index === 0) {
-            context.fillStyle = 'rgba(119, 255, 198, 0.38)'
+            context.fillStyle = isLightTheme
+              ? 'rgba(18, 110, 77, 0.72)'
+              : 'rgba(119, 255, 198, 0.38)'
           } else {
-            const opacity = 0.025 + (1 - index / stream.length) * 0.12
-            context.fillStyle = `rgba(55, 205, 144, ${opacity})`
+            const progress = 1 - index / stream.length
+            if (isLightTheme) {
+              const opacity = 0.08 + progress * 0.16
+              context.fillStyle = `rgba(20, 111, 80, ${opacity})`
+            } else {
+              const opacity = 0.025 + progress * 0.12
+              context.fillStyle = `rgba(55, 205, 144, ${opacity})`
+            }
           }
           context.fillText(stream.bits[index % stream.bits.length], stream.x, y)
         }
@@ -95,6 +115,7 @@ export default function AmbientEffects({ moduleId }) {
     return () => {
       window.cancelAnimationFrame(animationFrame)
       window.removeEventListener('resize', resize)
+      themeObserver.disconnect()
       context.clearRect(0, 0, width, height)
     }
   }, [moduleId, reduceMotion])

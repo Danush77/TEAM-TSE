@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getModule } from '../data/modules'
 import { getCourseSyllabus } from '../data/course-catalog'
+import { getSqlVisualLabHref } from '../lib/paths'
 
 function readCompletedTopics(progressKey) {
   try {
@@ -81,6 +82,7 @@ function CourseReader({ module, course }) {
         <Link to="/" className="text-sm font-medium text-white/75 hover:text-white">← Course library</Link>
         <nav aria-label="Course tools" className="flex flex-wrap items-center gap-x-5 gap-y-2">
           {course.examRoute && <Link to={course.examRoute} className="text-sm text-white/75 hover:text-white">Practice exams</Link>}
+          {module.id === 'mysql' && <a href={getSqlVisualLabHref()} className="text-sm font-medium text-amber-200 hover:text-amber-100">Visual SQL lab</a>}
           <Link to={`/quiz/${module.id}`} className="text-sm text-white/75 hover:text-white">Quiz</Link>
         </nav>
       </div>
@@ -304,7 +306,7 @@ function SyllabusOnlyReader({ module, course }) {
         </div>
         <h1 className="mt-5 font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">{course.title}</h1>
         <p className="mt-4 max-w-3xl text-base leading-7 text-white/75">{course.subtitle}</p>
-        <a href={`#${course.parts[0]?.id}`} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-indigo-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-indigo-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-200">
+        <a href={`#${course.parts[0]?.id}`} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--action-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--action-primary-fg)] transition-colors hover:bg-[var(--action-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-200">
           Browse {course.parts[0]?.label || 'syllabus'} <span aria-hidden="true">↓</span>
         </a>
       </header>

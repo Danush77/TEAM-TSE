@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getMysqlExam, MYSQL_EXAMS } from '../data/mysql-practice-exams'
+import { getSqlVisualLabHref } from '../lib/paths'
 
 function loadDrafts(examId) {
   try {
@@ -92,12 +93,20 @@ export default function PracticeExams() {
           Official assessments are live query-writing sessions with no external aids. The browser mocks below do not run or grade SQL and do not use up official attempts. For a closer simulation, close your notes and source links before starting.
         </div>
 
+        <a href={getSqlVisualLabHref()} className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.055] p-4 transition hover:border-amber-300/35 hover:bg-amber-300/[0.08]">
+          <span>
+            <span className="block text-sm font-semibold text-amber-100">Practice SQL visually</span>
+            <span className="mt-1 block text-sm text-white/65">Run queries against a sample database and follow each step.</span>
+          </span>
+          <span className="text-sm font-medium text-amber-200">Open Visual SQL Lab →</span>
+        </a>
+
         <section aria-label="Available MySQL practice exams" className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {MYSQL_EXAMS.map((item) => <ExamCard key={item.id} exam={item} />)}
         </section>
         <section className="mt-8 flex flex-wrap gap-3 border-t border-white/10 pt-6">
           <Link to="/quiz/mysql" className="rounded-lg border border-white/15 px-4 py-2.5 text-sm text-white/75 transition hover:bg-white/10">Take the interactive 52-question quiz</Link>
-          <Link to="/study/mysql" className="rounded-lg bg-indigo-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-indigo-300">Return to lessons</Link>
+          <Link to="/study/mysql" className="rounded-lg bg-[var(--action-primary)] px-4 py-2.5 text-sm font-semibold text-[var(--action-primary-fg)] transition-colors hover:bg-[var(--action-primary-hover)]">Return to lessons</Link>
         </section>
       </main>
     )

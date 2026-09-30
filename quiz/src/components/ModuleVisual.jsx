@@ -13,11 +13,11 @@ export default function ModuleVisual({ moduleId }) {
     >
       <svg viewBox="0 0 1000 560" preserveAspectRatio="none" className="h-full w-full">
         <g transform="translate(42 54)" opacity="0.8">
-          <rect width="350" height="66" rx="8" fill="#0b0e14" fillOpacity="0.7" stroke={scene.accent} strokeOpacity="0.35" />
+          <rect width="350" height="66" rx="8" fill="var(--visual-node)" fillOpacity="0.82" stroke={scene.accent} strokeOpacity="0.35" />
           <circle cx="16" cy="15" r="3" fill={scene.accent} fillOpacity="0.7" />
           <circle cx="27" cy="15" r="3" fill="#ffffff" fillOpacity="0.2" />
           <text x="14" y="38" fill={scene.accent} fontFamily="ui-monospace, monospace" fontSize="11">{scene.commands[0]}</text>
-          <text x="14" y="55" fill="#cbd5e1" fillOpacity="0.9" fontFamily="ui-monospace, monospace" fontSize="10">{scene.commands[1]}</text>
+          <text x="14" y="55" fill="var(--visual-caption-text)" fillOpacity="0.9" fontFamily="ui-monospace, monospace" fontSize="10">{scene.commands[1]}</text>
         </g>
 
         {scene.edges.map(([fromIndex, toIndex], index) => {
@@ -60,18 +60,18 @@ export default function ModuleVisual({ moduleId }) {
           <g key={node.label}>
             {node.fields ? (
               <>
-                <rect x={node.x - 70} y={node.y - 43} width="140" height="86" rx="7" fill="#0b0e14" fillOpacity="0.68" stroke={scene.accent} strokeOpacity="0.68" />
+                <rect x={node.x - 70} y={node.y - 43} width="140" height="86" rx="7" fill="var(--visual-node)" fillOpacity="0.82" stroke={scene.accent} strokeOpacity="0.68" />
                 <path d={`M ${node.x - 70} ${node.y - 18} H ${node.x + 70}`} stroke={scene.accent} strokeOpacity="0.45" />
                 <text x={node.x - 57} y={node.y - 26} fill={scene.accent} fontFamily="ui-monospace, monospace" fontSize="13" fontWeight="600">{node.label}</text>
                 {node.fields.map((field, index) => (
-                  <text key={field} x={node.x - 57} y={node.y + index * 16} fill="#d8e5f4" fillOpacity="0.8" fontFamily="ui-monospace, monospace" fontSize="10">{field}</text>
+                  <text key={field} x={node.x - 57} y={node.y + index * 16} fill="var(--visual-node-text)" fillOpacity="0.9" fontFamily="ui-monospace, monospace" fontSize="10">{field}</text>
                 ))}
               </>
             ) : (
               <>
-                <rect x={node.x - 63} y={node.y - 22} width="126" height="44" rx="22" fill="#0b0e14" fillOpacity="0.72" stroke={scene.accent} strokeOpacity="0.58" />
+                <rect x={node.x - 63} y={node.y - 22} width="126" height="44" rx="22" fill="var(--visual-node)" fillOpacity="0.84" stroke={scene.accent} strokeOpacity="0.58" />
                 <circle cx={node.x - 45} cy={node.y} r="3" fill={scene.accent} />
-                <text x={node.x + 4} y={node.y + 4} textAnchor="middle" fill="#e6e9ef" fillOpacity="0.86" fontFamily="ui-monospace, monospace" fontSize="11">{node.label}</text>
+                <text x={node.x + 4} y={node.y + 4} textAnchor="middle" fill="var(--visual-node-text)" fillOpacity="0.94" fontFamily="ui-monospace, monospace" fontSize="11">{node.label}</text>
               </>
             )}
           </g>

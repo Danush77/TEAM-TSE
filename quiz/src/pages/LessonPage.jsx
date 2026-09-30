@@ -354,7 +354,7 @@ export default function LessonPage() {
                 Mark this lesson complete
               </label>
             </div>
-            <button type="button" onClick={completeAndContinue} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-300 px-4 py-3 text-sm font-semibold text-[#102019] transition hover:bg-emerald-200 focus:outline-none focus:ring-2 focus:ring-emerald-200/70">
+            <button type="button" onClick={completeAndContinue} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[var(--action-success)] px-4 py-3 text-sm font-semibold text-[var(--action-success-fg)] transition-colors hover:bg-[var(--action-success-hover)] focus:outline-none focus:ring-2 focus:ring-emerald-200/70">
               {isComplete ? (nextTopic ? 'Continue to next topic' : 'Return to syllabus') : (nextTopic ? 'Mark complete & continue' : 'Mark complete & return to syllabus')}
               <span aria-hidden="true">→</span>
             </button>
@@ -364,7 +364,7 @@ export default function LessonPage() {
         </div>
 
         {mobileTopicsOpen && <div className="fixed inset-0 z-50 lg:hidden" role="presentation">
-          <div className="absolute inset-0 bg-black/65" onClick={() => setMobileTopicsOpen(false)} />
+          <div className="modal-scrim absolute inset-0" onClick={() => setMobileTopicsOpen(false)} />
           <aside role="dialog" aria-modal="true" aria-label={`${course.title} topics`} className="absolute inset-y-0 left-0 flex w-[min(22rem,88vw)] flex-col overflow-y-auto border-r border-white/15 bg-[var(--panel-bg)] p-4 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <Link to={`/course/${module.id}`} onClick={() => setMobileTopicsOpen(false)} className="text-sm font-semibold text-white/90 hover:text-white">{course.title}</Link>

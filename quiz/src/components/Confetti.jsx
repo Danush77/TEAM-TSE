@@ -1,9 +1,10 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useMemo } from 'react'
 
 const COLORS = ['#4f7cff', '#33c9a3', '#ffd43b', '#ff5c5c', '#a06cf7', '#5cd6ff']
 
 export default function Confetti({ count = 60 }) {
+  const reduceMotion = useReducedMotion()
   const pieces = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => ({
@@ -17,6 +18,8 @@ export default function Confetti({ count = 60 }) {
       })),
     [count]
   )
+
+  if (reduceMotion) return null
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden">

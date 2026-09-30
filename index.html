@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TSE Learning Hub — Trainee Software Engineers</title>
 <meta name="description" content="A collaborative learning platform where Trainee Software Engineers build, ship, and grow together on GitHub." />
+<meta name="theme-color" content="#000000" />
+<link rel="icon" type="image/png" href="exaze-logo%20(1).png" />
+<link rel="apple-touch-icon" href="exaze-logo%20(1).png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -14,17 +17,21 @@
 
 <header class="site-header">
   <div class="wrap">
-    <a href="index.html" class="brand"><span class="brand-mark"></span> TSE Learning Hub</a>
+    <a href="index.html" class="brand" aria-label="Exaze — TSE Learning Hub">
+      <img class="brand-logo" src="exaze-mark.png" alt="Exaze" width="625" height="721" />
+      <span class="brand-program">TSE Learning Hub</span>
+    </a>
     <nav class="nav-links" id="nav-links">
       <a href="index.html" aria-current="page">Home</a>
       <a href="about.html">About</a>
       <a href="team.html">Team</a>
       <a href="quiz/">Courses</a>
+      <a class="nav-mobile-github" href="https://github.com/jaswanth-exaze/TEAM-TSE" target="_blank" rel="noopener">GitHub</a>
     </nav>
     <a class="nav-cta" href="https://github.com/jaswanth-exaze/TEAM-TSE" target="_blank" rel="noopener">
       <span class="mono">GitHub</span>
     </a>
-    <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+    <button class="nav-toggle" aria-label="Toggle navigation" aria-controls="nav-links" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
   </div>
@@ -34,8 +41,17 @@
 
   <!-- HERO -->
   <section class="section section--ink hero">
+    <div class="exaze-ambient" aria-hidden="true">
+      <div class="exaze-ambient__light exaze-ambient__light--blue"></div>
+      <div class="exaze-ambient__light exaze-ambient__light--green"></div>
+      <div class="exaze-ambient__light exaze-ambient__light--red"></div>
+      <div class="exaze-ambient__particles">
+        <span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span>
+      </div>
+    </div>
     <div class="wrap hero-grid">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow hero-kicker">TRAINEE SOFTWARE ENGINEERS</p>
         <h1 class="h-display h-1">Learn. Build.<br />Ship. Together.</h1>
         <p class="lede">
@@ -48,53 +64,29 @@
           <a class="btn btn-ghost" href="about.html">What is TSE?</a>
           <a class="btn btn-ghost" href="quiz/">Explore courses</a>
         </div>
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <p class="mono">Every PR is real</p>
-            <p>No demo commits — every merge updates the live site.</p>
-          </div>
-          <div class="hero-stat">
-            <p class="mono">Peer reviewed</p>
-            <p>A teammate reviews your branch before it ships.</p>
-          </div>
-          <div class="hero-stat">
-            <p class="mono">Starts at zero</p>
-            <p>No fake members. The team fills in as people join.</p>
-          </div>
-        </div>
       </div>
-
-      <div aria-hidden="true">
-        <svg class="git-graph" viewBox="0 0 520 300" xmlns="http://www.w3.org/2000/svg">
-          <!-- main line -->
-          <path class="line-main draw" style="animation-delay:0.1s" d="M20,220 L500,220" />
-          <!-- feature branch: splits, two commits, merges back -->
-          <path class="line-feature draw" style="animation-delay:0.5s"
-                d="M150,220 C185,220 185,100 220,100 L300,100 C335,100 335,220 370,220" />
-
-          <!-- main commits -->
-          <circle class="dot-main pop" style="animation-delay:0s" cx="20" cy="220" r="6" />
-          <circle class="dot-main pop" style="animation-delay:1.1s" cx="150" cy="220" r="6" />
-          <circle class="dot-merge pop" style="animation-delay:1.9s" cx="370" cy="220" r="7" />
-          <circle class="dot-main pop" style="animation-delay:2.1s" cx="500" cy="220" r="6" />
-
-          <!-- feature commits -->
-          <circle class="dot-feature pop" style="animation-delay:1.3s" cx="220" cy="100" r="6" />
-          <circle class="dot-feature pop" style="animation-delay:1.55s" cx="300" cy="100" r="6" />
-
-          <!-- labels -->
-          <text x="20" y="245" style="animation-delay:0s" class="pop">main</text>
-          <text x="150" y="245" class="pop" style="animation-delay:1.1s">branch</text>
-          <text x="196" y="82" class="pop" style="animation-delay:1.3s">add-profile</text>
-          <text x="330" y="245" class="pop" style="animation-delay:1.9s">merge</text>
-          <text x="465" y="245" class="pop" style="animation-delay:2.1s">deploy</text>
-        </svg>
+      <div class="hero-brand-visual" aria-hidden="true">
+        <img class="hero-logo" src="exaze-logo-light.png" alt="" width="950" height="985" />
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <p class="mono">Every PR is real</p>
+          <p>No demo commits — every merge updates the live site.</p>
+        </div>
+        <div class="hero-stat">
+          <p class="mono">Peer reviewed</p>
+          <p>A teammate reviews your branch before it ships.</p>
+        </div>
+        <div class="hero-stat">
+          <p class="mono">Starts at zero</p>
+          <p>No fake members. The team fills in as people join.</p>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- PIPELINE -->
-  <section class="section section--ink" style="padding-top:0;">
+  <section class="section section--ink pipeline-section">
     <div class="wrap">
       <p class="eyebrow">HOW WORK MOVES THROUGH THIS REPO</p>
       <div class="pipeline">
@@ -112,7 +104,7 @@
 
   <!-- WHAT THIS IS -->
   <section class="section section--paper">
-    <div class="wrap split">
+    <div class="wrap split split--overview">
       <div>
         <p class="eyebrow" style="color:var(--teal);">WHAT THIS PLACE IS</p>
         <h2 class="h-display h-3">A codebase you learn by shipping to.</h2>
@@ -147,14 +139,14 @@
   </section>
 
   <!-- CTA -->
-  <section class="section section--paper" style="padding-top:0;">
+  <section class="section section--paper">
     <div class="wrap">
       <div class="cta-banner">
         <div>
           <h3 class="h-display h-4">Ready to add yourself?</h3>
           <p class="lede" style="margin-top:0.5rem;">Fork the repo, copy the profile template, open a PR.</p>
         </div>
-        <a class="btn btn-primary" style="background:var(--ink);color:var(--paper-text);" href="team.html">See how it works →</a>
+        <a class="btn btn-primary btn-primary--dark" href="team.html">See how it works →</a>
       </div>
     </div>
   </section>

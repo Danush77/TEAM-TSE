@@ -172,7 +172,7 @@ export default function Quiz() {
   const progressPct = Math.round((index / questions.length) * 100)
   const timeLimit = TIME_LIMITS[q.difficulty] ?? TIME_LIMITS.medium
   const timerPct = Math.max(0, (timeRemaining / timeLimit) * 100)
-  const timerColor = timeRemaining <= 10 ? '#ff5c5c' : timeRemaining <= 20 ? '#f5a623' : '#33c9a3'
+  const timerColor = timeRemaining <= 10 ? 'var(--status-danger)' : timeRemaining <= 20 ? 'var(--status-warning)' : 'var(--status-success)'
 
   function toggleOption(opt) {
     if (revealed) return
@@ -241,7 +241,7 @@ export default function Quiz() {
           <Icon name="arrowRight" size={14} className="rotate-180" /> Exit
         </button>
         <div className="flex items-center gap-2 text-xs font-medium text-white/50">
-          <span style={{ color: mod.color }}>{mod.title}</span>
+          <span className="theme-accent" style={{ '--module-accent': mod.color }}>{mod.title}</span>
           <span>·</span>
           <span>
             {index + 1} / {questions.length}
@@ -275,7 +275,7 @@ export default function Quiz() {
             <Icon name="clock" size={14} />
             <span>Timer</span>
             <span className={`relative h-5 w-9 shrink-0 overflow-hidden rounded-full transition-colors ${timerEnabled ? 'bg-emerald-400/80' : 'bg-white/20'}`}>
-              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-[left] ${timerEnabled ? 'left-[18px]' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-[var(--switch-thumb)] transition-[left] ${timerEnabled ? 'left-[18px]' : 'left-0.5'}`} />
             </span>
             <span className="w-7 shrink-0 text-left">{timerEnabled ? 'On' : 'Off'}</span>
           </button>
@@ -293,7 +293,11 @@ export default function Quiz() {
               </div>
               <div
                 className="min-w-[76px] rounded-md border px-2.5 py-1 text-center font-mono text-sm font-semibold tabular-nums"
-                style={{ color: timerColor, borderColor: `${timerColor}55`, background: `${timerColor}12` }}
+                style={{
+                  color: timerColor,
+                  borderColor: `color-mix(in srgb, ${timerColor} 42%, transparent)`,
+                  background: `color-mix(in srgb, ${timerColor} 10%, transparent)`,
+                }}
                 aria-label={revealed ? 'Timer stopped' : `${timeRemaining} seconds remaining`}
               >
                 {String(Math.floor(timeRemaining / 60)).padStart(2, '0')}:{String(timeRemaining % 60).padStart(2, '0')}
@@ -312,7 +316,7 @@ export default function Quiz() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -24 }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
-          className="-mx-3 rounded-lg bg-[#0b0e14]/70 px-4 py-5 shadow-[0_12px_48px_rgba(0,0,0,0.24)] backdrop-blur-sm sm:-mx-4 sm:px-5"
+          className="-mx-3 rounded-lg bg-[var(--panel-bg)]/90 px-4 py-5 shadow-[0_12px_48px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:-mx-4 sm:px-5"
         >
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <DifficultyMeter difficulty={q.difficulty} />
@@ -338,13 +342,13 @@ export default function Quiz() {
                 value={textValue}
                 onChange={(e) => setTextValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !revealed && handleSubmit()}
-                placeholder="Type your answer…"
-                className={`w-full rounded-xl border px-4 py-3.5 font-mono text-sm text-white outline-none transition-colors ${
+                placeholder={"Type your answer\u2026"}
+                className={`w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-3.5 font-mono text-sm text-white outline-none transition-colors placeholder:text-white/50 ${
                   revealed
                     ? isCorrectAnswer(q, textValue)
                       ? 'border-emerald-400/60 bg-emerald-400/10'
                       : 'border-rose-400/60 bg-rose-400/10'
-                    : 'border-white/10 bg-white/[0.03] focus:border-indigo-400/60'
+                    : 'focus:border-indigo-400/60'
                 }`}
               />
               {revealed && !isCorrectAnswer(q, textValue) && (
@@ -406,7 +410,7 @@ export default function Quiz() {
                 whileTap={{ scale: 0.97 }}
                 disabled={!canSubmit}
                 onClick={handleSubmit}
-                className="rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-30"
+                className="rounded-xl bg-[var(--action-primary)] px-6 py-3 text-sm font-semibold text-[var(--action-primary-fg)] transition-colors hover:bg-[var(--action-primary-hover)] disabled:opacity-40"
               >
                 Check answer
               </motion.button>

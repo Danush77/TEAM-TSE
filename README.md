@@ -5,6 +5,7 @@ themselves, track their learning, and practice real Git/GitHub workflows —
 built as a static site.
 
 The interactive React quiz app lives in `quiz/` and is built separately for deployment.
+The MySQL area also includes a standalone, browser-based SQL Visual Learning Lab at `quiz/public/sql-visual-lab/`.
 
 ## What this is
 

@@ -55,6 +55,11 @@ jobs:
         run: |
           test -f ../_site/quiz/index.html
           test -d ../_site/quiz/assets
+          test -f ../_site/quiz/sql-visual-lab/index.html
+          test -f ../_site/quiz/sql-visual-lab/app.js
+          test -f ../_site/quiz/sql-visual-lab/engine.js
+          test -f ../_site/quiz/sql-visual-lab/schema.sql
+          test -f ../_site/quiz/sql-visual-lab/challenges.json
           grep -Eq '<script[^>]+src="\./assets/index-[^"]+\.js"' ../_site/quiz/index.html
           if grep -q 'src/main.jsx' ../_site/quiz/index.html; then
             echo "Quiz output still references the uncompiled JSX entry point."

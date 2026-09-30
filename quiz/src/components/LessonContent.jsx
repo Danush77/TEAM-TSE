@@ -409,7 +409,7 @@ function MistakeList({ items, topicId }) {
               <SqlCodeBlock code={mistake.fix} />
             </div>
           </div>
-          {mistake.error && <div className="mt-3 rounded-lg border border-rose-300/20 bg-[#160d12] px-3.5 py-3 font-mono text-sm leading-6 text-rose-100/90"><span className="mr-2 text-rose-300">Error</span>{mistake.error}</div>}
+          {mistake.error && <div className="code-surface mt-3 rounded-lg border border-rose-300/20 bg-[#160d12] px-3.5 py-3 font-mono text-sm leading-6 text-rose-100/90"><span className="mr-2 text-rose-300">Error</span>{mistake.error}</div>}
           {mistake.explanation && <RichLessonText content={mistake.explanation} className="mt-3" topicId={topicId} />}
           {mistake.tip && <aside className="mt-3 rounded-lg border border-sky-200/20 bg-sky-200/[0.045] px-3.5 py-3"><p className="text-xs font-semibold uppercase tracking-[0.13em] text-sky-100/90">Best practice</p><p className="mt-1 text-sm leading-6 text-white/75">{mistake.tip}</p></aside>}
           </>}
@@ -561,7 +561,7 @@ function CodePractice({ requirements = [], inputId }) {
         rows={6}
         spellCheck="false"
         placeholder="Write a query here…"
-        className="mt-2 w-full resize-y rounded-lg border border-white/15 bg-[#090c12] p-3 font-mono text-sm leading-6 text-white/90 outline-none placeholder:text-white/40 focus:border-indigo-200/45"
+        className="code-surface mt-2 w-full resize-y rounded-lg border border-white/15 bg-[#090c12] p-3 font-mono text-sm leading-6 text-white/90 outline-none placeholder:text-white/40 focus:border-indigo-200/45"
       />
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs leading-5 text-white/65">Checks for the required SQL parts. It does not run a database.</p>

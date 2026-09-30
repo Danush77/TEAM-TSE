@@ -9,6 +9,9 @@
     content="What TSE stands for, why the Learning Hub exists, and how Trainee Software Engineers learn by contributing to it." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" type="image/png" href="exaze-logo%20(1).png" />
+  <link rel="apple-touch-icon" href="exaze-logo%20(1).png" />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet" />
@@ -19,17 +22,21 @@
 
   <header class="site-header">
     <div class="wrap">
-      <a href="index.html" class="brand"><span class="brand-mark"></span> TSE Learning Hub</a>
+      <a href="index.html" class="brand" aria-label="Exaze — TSE Learning Hub">
+        <img class="brand-logo" src="exaze-mark.png" alt="Exaze" width="625" height="721" />
+        <span class="brand-program">TSE Learning Hub</span>
+      </a>
       <nav class="nav-links" id="nav-links">
         <a href="index.html">Home</a>
         <a href="about.html" aria-current="page">About</a>
         <a href="team.html">Team</a>
         <a href="quiz/">Courses</a>
+        <a class="nav-mobile-github" href="https://github.com/jaswanth-exaze/TEAM-TSE" target="_blank" rel="noopener">GitHub</a>
       </nav>
       <a class="nav-cta" href="https://github.com/jaswanth-exaze/TEAM-TSE" target="_blank" rel="noopener">
         <span class="mono">GitHub</span>
       </a>
-      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <button class="nav-toggle" aria-label="Toggle navigation" aria-controls="nav-links" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
     </div>

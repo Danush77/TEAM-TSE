@@ -1,0 +1,122 @@
+[
+  {
+    "id": "salary-filter",
+    "title": "Find senior earners",
+    "difficulty": "Beginner",
+    "description": "Return each employee's name and salary when their salary is greater than 100,000. Sort from highest to lowest.",
+    "hint": "Filter with WHERE, then sort the selected rows with ORDER BY.",
+    "expectedResult": {
+      "query": "SELECT name, salary FROM employees WHERE salary > 100000 ORDER BY salary DESC",
+      "orderMatters": true
+    },
+    "solution": "SELECT name, salary\nFROM employees\nWHERE salary > 100000\nORDER BY salary DESC;"
+  },
+  {
+    "id": "unassigned-employee",
+    "title": "Find unassigned employees",
+    "difficulty": "Beginner",
+    "description": "Return the id and name of employees who do not belong to a department.",
+    "hint": "NULL needs a special comparison. Use IS NULL instead of = NULL.",
+    "expectedResult": {
+      "query": "SELECT id, name FROM employees WHERE department_id IS NULL",
+      "orderMatters": false
+    },
+    "solution": "SELECT id, name\nFROM employees\nWHERE department_id IS NULL;"
+  },
+  {
+    "id": "top-salaries",
+    "title": "Order the lowest salaries",
+    "difficulty": "Beginner",
+    "description": "Show the three lowest-paid employees. Return name and salary, from lowest to highest.",
+    "hint": "ORDER BY salary ASC puts the smallest value first. LIMIT keeps only the first three rows.",
+    "expectedResult": {
+      "query": "SELECT name, salary FROM employees ORDER BY salary ASC LIMIT 3",
+      "orderMatters": true
+    },
+    "solution": "SELECT name, salary\nFROM employees\nORDER BY salary ASC\nLIMIT 3;"
+  },
+  {
+    "id": "department-join",
+    "title": "Show Engineering teammates",
+    "difficulty": "Intermediate",
+    "description": "Return the employee name and department name for Engineering employees earning over 95,000.",
+    "hint": "Join employees to departments using department_id, then filter the joined rows.",
+    "expectedResult": {
+      "query": "SELECT e.name, d.name AS department_name FROM employees AS e INNER JOIN departments AS d ON e.department_id = d.id WHERE d.name = 'Engineering' AND e.salary > 95000 ORDER BY e.name",
+      "orderMatters": true
+    },
+    "solution": "SELECT e.name, d.name AS department_name\nFROM employees AS e\nINNER JOIN departments AS d ON e.department_id = d.id\nWHERE d.name = 'Engineering' AND e.salary > 95000\nORDER BY e.name;"
+  },
+  {
+    "id": "large-pending-orders",
+    "title": "Review large pending orders",
+    "difficulty": "Intermediate",
+    "description": "Return the id and amount for pending orders over 9,000.",
+    "hint": "Both conditions belong in WHERE. Combine them with AND.",
+    "expectedResult": {
+      "query": "SELECT id, amount FROM orders WHERE status = 'pending' AND amount > 9000",
+      "orderMatters": false
+    },
+    "solution": "SELECT id, amount\nFROM orders\nWHERE status = 'pending' AND amount > 9000;"
+  },
+  {
+    "id": "orders-by-status",
+    "title": "Summarize order statuses",
+    "difficulty": "Intermediate",
+    "description": "For each order status, show the number of orders and the total non-NULL amount.",
+    "hint": "Group by status, then use COUNT(*) and SUM(amount).",
+    "expectedResult": {
+      "query": "SELECT status, COUNT(*) AS order_count, SUM(amount) AS total_amount FROM orders GROUP BY status",
+      "orderMatters": false
+    },
+    "solution": "SELECT status, COUNT(*) AS order_count, SUM(amount) AS total_amount\nFROM orders\nGROUP BY status;"
+  },
+  {
+    "id": "busy-departments",
+    "title": "Find departments with multiple people",
+    "difficulty": "Advanced",
+    "description": "Show department names and employee counts for departments with at least two employees. Sort by count from highest to lowest, then by department name.",
+    "hint": "HAVING filters grouped counts after GROUP BY. WHERE cannot filter COUNT(*).",
+    "expectedResult": {
+      "query": "SELECT d.name AS department_name, COUNT(e.id) AS employee_count FROM departments AS d INNER JOIN employees AS e ON e.department_id = d.id GROUP BY d.id, d.name HAVING COUNT(e.id) >= 2 ORDER BY employee_count DESC, department_name ASC",
+      "orderMatters": true
+    },
+    "solution": "SELECT d.name AS department_name, COUNT(e.id) AS employee_count\nFROM departments AS d\nINNER JOIN employees AS e ON e.department_id = d.id\nGROUP BY d.id, d.name\nHAVING COUNT(e.id) >= 2\nORDER BY employee_count DESC, department_name ASC;"
+  },
+  {
+    "id": "all-departments",
+    "title": "Include empty departments",
+    "difficulty": "Advanced",
+    "description": "List every department and its employee count, including departments with no employees. Sort by count from highest to lowest, then name.",
+    "hint": "Start from departments and LEFT JOIN employees. COUNT(e.id) returns zero for an unmatched department.",
+    "expectedResult": {
+      "query": "SELECT d.name AS department_name, COUNT(e.id) AS employee_count FROM departments AS d LEFT JOIN employees AS e ON e.department_id = d.id GROUP BY d.id, d.name ORDER BY employee_count DESC, department_name ASC",
+      "orderMatters": true
+    },
+    "solution": "SELECT d.name AS department_name, COUNT(e.id) AS employee_count\nFROM departments AS d\nLEFT JOIN employees AS e ON e.department_id = d.id\nGROUP BY d.id, d.name\nORDER BY employee_count DESC, department_name ASC;"
+  },
+  {
+    "id": "employee-order-totals",
+    "title": "Total completed order value by employee",
+    "difficulty": "Advanced",
+    "description": "Show employees with completed orders and their total completed order amount. Keep only totals over 10,000 and sort from highest to lowest.",
+    "hint": "Join orders to employees, filter completed rows with WHERE, then GROUP BY the employee.",
+    "expectedResult": {
+      "query": "SELECT e.name, SUM(o.amount) AS completed_total FROM employees AS e INNER JOIN orders AS o ON o.employee_id = e.id WHERE o.status = 'completed' GROUP BY e.id, e.name HAVING SUM(o.amount) > 10000 ORDER BY completed_total DESC",
+      "orderMatters": true
+    },
+    "solution": "SELECT e.name, SUM(o.amount) AS completed_total\nFROM employees AS e\nINNER JOIN orders AS o ON o.employee_id = e.id\nWHERE o.status = 'completed'\nGROUP BY e.id, e.name\nHAVING SUM(o.amount) > 10000\nORDER BY completed_total DESC;"
+  },
+  {
+    "id": "department-average",
+    "title": "Compare department salary averages",
+    "difficulty": "Advanced",
+    "description": "Show each department whose average salary is above 90,000. Return department name and average salary, highest average first.",
+    "hint": "Join employees to departments, group by the department, and use HAVING AVG(salary) > 90000.",
+    "expectedResult": {
+      "query": "SELECT d.name AS department_name, AVG(e.salary) AS average_salary FROM employees AS e INNER JOIN departments AS d ON e.department_id = d.id GROUP BY d.id, d.name HAVING AVG(e.salary) > 90000 ORDER BY average_salary DESC",
+      "orderMatters": true
+    },
+    "solution": "SELECT d.name AS department_name, AVG(e.salary) AS average_salary\nFROM employees AS e\nINNER JOIN departments AS d ON e.department_id = d.id\nGROUP BY d.id, d.name\nHAVING AVG(e.salary) > 90000\nORDER BY average_salary DESC;"
+  }
+]

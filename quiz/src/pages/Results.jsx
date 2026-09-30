@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { getModule } from '../data/modules'
 import Icon from '../components/Icon'
 import Confetti from '../components/Confetti'
 
-function useCountUp(target, duration = 1000) {
+function useCountUp(target, duration = 1000, reduceMotion = false) {
   const [value, setValue] = useState(0)
   useEffect(() => {
+    if (reduceMotion) {
+      setValue(target)
+      return undefined
+    }
+
     let start
     let raf
     function step(ts) {
@@ -18,7 +23,7 @@ function useCountUp(target, duration = 1000) {
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [target, duration])
+  }, [target, duration, reduceMotion])
   return value
 }
 
@@ -27,20 +32,21 @@ export default function Results() {
   const { state } = useLocation()
   const navigate = useNavigate()
   const mod = state?.mod || getModule(moduleId)
+  const { score = 0, total = 0, answers = [] } = state || {}
+  const reduceMotion = useReducedMotion()
+  const animatedScore = useCountUp(score, 1000, reduceMotion)
 
   if (!state) {
     navigate(`/quiz/${moduleId}`, { replace: true })
     return null
   }
 
-  const { score, total, answers } = state
   const pct = Math.round((score / total) * 100)
-  const animatedScore = useCountUp(score)
   const isGreat = pct >= 80
   const isGood = pct >= 50
 
   const verdict = isGreat ? 'Excellent work' : isGood ? 'Solid effort' : 'Room to grow'
-  const verdictColor = isGreat ? '#33c9a3' : isGood ? '#f5a623' : '#ff5c5c'
+  const verdictColor = isGreat ? 'var(--status-success)' : isGood ? 'var(--status-warning)' : 'var(--status-danger)'
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
@@ -72,7 +78,7 @@ export default function Results() {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           onClick={() => navigate(`/quiz/${moduleId}`)}
-          className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black"
+          className="flex items-center gap-2 rounded-xl bg-[var(--action-primary)] px-5 py-2.5 text-sm font-semibold text-[var(--action-primary-fg)] transition-colors hover:bg-[var(--action-primary-hover)]"
         >
           <Icon name="refresh" size={15} /> Retry
         </motion.button>

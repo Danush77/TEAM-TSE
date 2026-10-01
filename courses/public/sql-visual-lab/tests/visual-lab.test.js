@@ -56,6 +56,16 @@ test('keeps Query Mode read-only and isolates sandbox writes', async () => {
   assert.equal(sandboxCount.finalResult.rows[0][0], 11)
 })
 
+test('exposes primary and foreign-key labels in the generated schema metadata', async () => {
+  const resetState = await request('reset')
+  const employees = resetState.schema.find((table) => table.name === 'employees')
+  const departments = resetState.schema.find((table) => table.name === 'departments')
+  const departmentKey = employees.columns.find((column) => column.name === 'department_id').foreignKey
+  assert.equal(departmentKey.table, 'departments')
+  assert.equal(departmentKey.column, 'id')
+  assert.equal(departments.columns.find((column) => column.name === 'id').primaryKey, true)
+})
+
 test('visualizes INSERT, UPDATE, DELETE and MySQL UPDATE JOIN with row identity', async () => {
   const inserted = await request('run', { mode: 'sandbox', sql: "INSERT INTO departments(name, location) VALUES ('Finance', 'Delhi')" })
   assert.deepEqual(Array.from(inserted.statements[0].after.rowIds).slice(-1), [11])

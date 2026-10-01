@@ -498,6 +498,7 @@ function renderSchemaTables() {
     ? visibleSchema.map((table) => [table.name, table.columns || []])
     : Object.entries(SCHEMA_TABLES).map(([name, columns]) => [name, columns.map(([columnName, type]) => ({ name: columnName, type }))])
   tables.forEach(([tableName, columns]) => {
+    const tableMeta = visibleSchema.find((table) => table.name === tableName)
     const button = createNode('button', 'schema-table-button')
     button.type = 'button'
     button.setAttribute('aria-expanded', 'false')
@@ -505,7 +506,14 @@ function renderSchemaTables() {
     button.append(createNode('span', 'table-glyph', '▤'))
     const label = createNode('span', 'schema-table-label')
     label.append(createNode('strong', '', tableName))
-    label.append(createNode('small', '', `${columns.length} columns${schema.find((table) => table.name === tableName)?.type === 'view' ? ' · view' : ''}`))
+    label.append(createNode('small', '', `${columns.length} columns${tableMeta?.type === 'view' ? ' · view' : ''}`))
+    const keys = columns.filter((column) => column.primaryKey || column.foreignKey)
+    if (keys.length) {
+      const keySummary = keys.map((column) => column.primaryKey
+        ? `PK ${column.name}`
+        : `FK ${column.name} → ${column.foreignKey.table}.${column.foreignKey.column}`)
+      label.append(createNode('small', 'schema-relations', keySummary.join(' · ')))
+    }
     button.append(label)
     button.append(createNode('span', 'schema-chevron', '›'))
     button.addEventListener('click', () => showTablePreview(tableName, button))
@@ -525,7 +533,9 @@ async function showTablePreview(tableName, activeButton) {
     const result = unwrapWorkerResult(rawResult)
     preview.replaceChildren()
     const heading = createNode('div', 'preview-heading')
-    heading.append(createNode('h3', '', `${tableName} <span>sample</span>`))
+    const title = createNode('h3')
+    title.append(document.createTextNode(`${tableName} `), createNode('span', '', 'sample'))
+    heading.append(title)
     const tryButton = createNode('button', 'text-button', 'Use in editor')
     tryButton.type = 'button'
     tryButton.addEventListener('click', () => {
@@ -533,7 +543,18 @@ async function showTablePreview(tableName, activeButton) {
       editor?.focus()
     })
     heading.append(tryButton)
-    preview.append(heading, renderTable(result, { compact: true, rowLimit: 5 }))
+    const tableMeta = (currentMode === 'sandbox' ? sandboxSchema : querySchema).find((table) => table.name === tableName)
+    const keys = (tableMeta?.columns || []).filter((column) => column.primaryKey || column.foreignKey)
+    if (keys.length) {
+      const keySummary = createNode('p', 'preview-key-summary')
+      keySummary.append(createNode('strong', '', 'Keys: '))
+      keySummary.append(document.createTextNode(keys.map((column) => column.primaryKey
+        ? `PK ${column.name}`
+        : `FK ${column.name} → ${column.foreignKey.table}.${column.foreignKey.column}`).join(' · ')))
+      preview.append(heading, keySummary, renderTable(result, { compact: true, rowLimit: 5 }))
+    } else {
+      preview.append(heading, renderTable(result, { compact: true, rowLimit: 5 }))
+    }
   } catch (error) {
     preview.replaceChildren(createNode('p', 'preview-placeholder', friendlyEngineError(error)))
   }
@@ -701,11 +722,10 @@ async function runQuery({ checkChallenge = false, confirmed = false } = {}) {
       )
       if (stepPlan.available) {
         renderSteps(stepPlan.steps)
-        activateTab('steps')
       } else {
         renderStepUnavailable(stepPlan.reason)
-        activateTab('result')
       }
+      activateTab('result')
       return result || workerResult
     }
 
@@ -723,18 +743,17 @@ async function runQuery({ checkChallenge = false, confirmed = false } = {}) {
     resultCount.textContent = `${result.totalRows} ${result.totalRows === 1 ? 'row' : 'rows'}${result.truncated ? ' (showing first 5,000)' : ''}`
     setQueryMessage(
       stepPlan.available
-        ? 'Query complete. Follow the steps to see how the rows changed.'
+        ? 'Query complete. Results are shown; open How it works for the visual breakdown.'
         : 'Query complete. The final result is ready; this query has no step breakdown.',
       stepPlan.available ? 'success' : 'warning',
     )
 
     if (stepPlan.available) {
       renderSteps(stepPlan.steps)
-      activateTab('steps')
     } else {
       renderStepUnavailable(stepPlan.reason || 'Step view not available for this query yet. The final result is still shown.')
-      activateTab('result')
     }
+    activateTab('result')
 
     if (checkChallenge) await gradeChallenge(result)
     return result

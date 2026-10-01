@@ -108,7 +108,7 @@ function TopicList({ module, course, topics, topic, search, setSearch, completed
 
 function LessonSidebar({ module, course, topics, topic, search, setSearch, completed }) {
   return (
-    <aside className="hidden self-start lg:sticky lg:top-4 lg:block lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
+    <aside className="hidden self-start lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
       <div className="rounded-xl border border-white/10 bg-[var(--panel-bg)] p-4">
         <Link to={`/course/${module.id}`} className="text-sm font-semibold text-white/90 hover:text-white">{course.title}</Link>
         <CourseProgress topics={topics} completed={completed} />
@@ -124,7 +124,7 @@ function OnThisPage({ pathname, activeSection, sections }) {
   }
 
   return (
-    <aside className="hidden self-start xl:sticky xl:top-4 xl:block">
+    <aside className="hidden self-start xl:sticky xl:top-20 xl:block">
       <div className="rounded-xl border border-white/10 bg-[var(--panel-bg)] p-3">
         <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-[0.13em] text-white/65">On this page</p>
         <nav aria-label="Lesson sections" className="space-y-0.5">

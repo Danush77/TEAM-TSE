@@ -12,20 +12,24 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.21/theme/material-darker.min.css" />
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Skip to page content</a>
     <div class="ambient ambient--blue" aria-hidden="true"></div>
     <div class="ambient ambient--green" aria-hidden="true"></div>
 
     <header class="site-header">
-      <a class="back-link" href="../" aria-label="Back to the TSE course library"><span aria-hidden="true">←</span> Course library</a>
+      <nav class="header-links" aria-label="Site navigation">
+        <a class="back-link" href="../../" aria-label="Go to TSE Learning Hub home"><span aria-hidden="true">⌂</span> TSE Home</a>
+        <a class="back-link" href="../" aria-label="Back to the course library"><span aria-hidden="true">←</span> Course library</a>
+      </nav>
       <div class="header-meta"><span class="status-dot" aria-hidden="true"></span> Runs privately in your browser</div>
     </header>
 
-    <main class="page-shell">
+    <main class="page-shell" id="main-content">
       <section class="intro" aria-labelledby="page-title">
         <div>
           <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true">{ }</span> INTERACTIVE MYSQL PRACTICE</p>
           <h1 id="page-title">SQL Visual Learning Lab</h1>
-          <p class="intro-copy">Write a query, run it, and follow the rows through each step of SQL’s logical execution order.</p>
+          <p class="intro-copy">Run a query to see its results first. Open How it works when you want to follow the rows through each step.</p>
         </div>
         <button class="button button--quiet" id="cheatsheet-button" type="button" aria-haspopup="dialog">
           <span aria-hidden="true">⌘</span> Clause cheat sheet
@@ -71,14 +75,14 @@
             </div>
             <button class="icon-button" id="reset-database" type="button" aria-label="Reset the sample database" title="Reset database">↻</button>
           </div>
-          <p class="panel-subtitle">Select a table to inspect its first five rows.</p>
+          <p class="panel-subtitle">Select a table to inspect sample rows and how its keys relate to other tables.</p>
           <div id="schema-tables" class="schema-tables" aria-live="polite">
             <p class="loading-copy">Loading tables…</p>
           </div>
           <div class="table-preview" id="table-preview" aria-live="polite">
             <p class="preview-placeholder">Your table preview will appear here.</p>
           </div>
-          <p class="schema-note"><span aria-hidden="true">ⓘ</span> The sample database resets in memory. Your queries are not sent to a server.</p>
+          <p class="schema-note"><span aria-hidden="true">ⓘ</span> PK means primary key. FK shows the referenced table and column, such as <code>employees.department_id → departments.id</code>. The sample database resets in memory; queries stay in your browser.</p>
         </aside>
 
         <section class="query-workspace" aria-label="SQL query workspace">
@@ -131,10 +135,11 @@ ORDER BY salary DESC;</textarea>
 
           <section class="output-panel panel" aria-label="Query output">
             <div class="tab-bar" role="tablist" aria-label="Query output views">
-              <button class="tab-button is-active" id="tab-result" type="button" role="tab" aria-selected="true" aria-controls="panel-result" tabindex="0" data-tab="result">Result <span class="tab-count" id="result-count"></span></button>
-              <button class="tab-button" id="tab-steps" type="button" role="tab" aria-selected="false" aria-controls="panel-steps" tabindex="-1" data-tab="steps">How it works <span class="new-badge">VISUAL</span></button>
+              <button class="tab-button is-active" id="tab-result" type="button" role="tab" aria-selected="true" aria-controls="panel-result" tabindex="0" data-tab="result">Results <span class="tab-count" id="result-count"></span></button>
+              <button class="tab-button" id="tab-steps" type="button" role="tab" aria-selected="false" aria-controls="panel-steps" tabindex="-1" data-tab="steps">How it works <span class="new-badge">VISUAL STEPS</span></button>
               <div class="output-meta" id="execution-meta"></div>
             </div>
+            <p class="output-hint">Results open here after a run. Choose <strong>How it works</strong> to explore the visual breakdown.</p>
 
             <div class="tab-panel is-active" id="panel-result" role="tabpanel" aria-labelledby="tab-result" tabindex="0">
               <div class="result-content" id="result-content">

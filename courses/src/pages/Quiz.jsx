@@ -151,7 +151,7 @@ export default function Quiz() {
       <div className="mx-auto max-w-xl px-6 py-24 text-center text-white/60">
         Module not found.{' '}
         <button className="text-indigo-400 underline" onClick={() => navigate('/')}>
-          Go home
+          Open course library
         </button>
       </div>
     )
@@ -239,7 +239,7 @@ export default function Quiz() {
           onClick={() => navigate('/')}
           className="flex items-center gap-1.5 text-sm text-white/40 transition-colors hover:text-white/70"
         >
-          <Icon name="arrowRight" size={14} className="rotate-180" /> Exit
+          <Icon name="arrowRight" size={14} className="rotate-180" /> Course library
         </button>
         <div className="flex items-center gap-2 text-xs font-medium text-white/50">
           <span className="theme-accent" style={{ '--module-accent': mod.color }}>{mod.title}</span>

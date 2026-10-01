@@ -597,7 +597,16 @@ function getSchemaSummary(db) {
       let columns = []
       if (type === 'table' || type === 'view') {
         const info = db.exec(`PRAGMA table_info(${quoteIdentifier(name)})`)[0]
-        columns = (info?.values || []).map((row) => ({ name: row[1], type: row[2] || 'value', primaryKey: Boolean(row[5]) }))
+        const foreignKeys = db.exec(`PRAGMA foreign_key_list(${quoteIdentifier(name)})`)[0]?.values || []
+        columns = (info?.values || []).map((row) => {
+          const foreignKey = foreignKeys.find((key) => String(key[3]).toLowerCase() === String(row[1]).toLowerCase())
+          return {
+            name: row[1],
+            type: row[2] || 'value',
+            primaryKey: Boolean(row[5]),
+            foreignKey: foreignKey ? { table: foreignKey[2], column: foreignKey[4] || 'id' } : null,
+          }
+        })
       } else if (type === 'index') {
         const info = db.exec(`PRAGMA index_info(${quoteIdentifier(name)})`)[0]
         columns = (info?.values || []).map((row) => ({ name: row[2], type: 'index' }))

@@ -4,6 +4,11 @@ React + Framer Motion course library covering 16 Foundation and Advanced modules
 Course material is the primary experience; each module's quiz is a secondary self-check.
 No backend — lesson progress and quiz answers are stored in the browser via localStorage.
 
+All course routes use the shared `SiteNavigation`: **Home** returns to the TSE site,
+**Course library** returns to this app's landing page, and the active module link
+returns to that course's syllabus. The same destinations remain available in the
+mobile menu and on the standalone SQL lab.
+
 ## Run locally
 ```
 npm install

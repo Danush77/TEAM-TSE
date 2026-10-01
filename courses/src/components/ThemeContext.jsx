@@ -42,10 +42,10 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={`Switch to ${nextTheme} mode`}
       aria-pressed={theme === 'light'}
-      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-3 text-xs font-medium text-white/75 transition-colors hover:border-white/25 hover:bg-white/[0.07] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+      className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.04] px-3 text-xs font-medium text-white/75 transition-colors hover:border-white/25 hover:bg-white/[0.07] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
     >
       <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />
-      {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+      <span className="hidden min-[400px]:inline">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
     </button>
   )
 }

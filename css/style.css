@@ -261,12 +261,14 @@ input, textarea { font: inherit; }
     transform: translateY(-8px);
     opacity: 0;
     pointer-events: none;
+    visibility: hidden;
     transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
   }
   .nav-links.is-open {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
+    visibility: visible;
   }
   .nav-links .nav-mobile-github {
     display: inline-flex;

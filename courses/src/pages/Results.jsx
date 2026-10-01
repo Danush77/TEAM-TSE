@@ -88,7 +88,7 @@ export default function Results() {
           onClick={() => navigate('/')}
           className="rounded-xl border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/80"
         >
-          All modules
+          Course library
         </motion.button>
       </div>
 

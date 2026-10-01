@@ -38,7 +38,8 @@ document.querySelectorAll("[data-logo-morph]").forEach((stage) => {
       w: [118, 132, 0],
     },
     T: {
-      b: [130, 150, ...L(130, 150, 312, 150), ...L(312, 150, 495, 150)],
+      // The crossbar rises through the centre, with softly dropped ends.
+      b: [130, 164, 190, 153, 252, 145, 312, 145, 375, 145, 435, 153, 495, 164],
       g: [312, 215, ...L(312, 215, 312, 310), ...L(312, 310, 312, 405), ...L(312, 405, 312, 500), ...L(312, 500, 312, 595)],
       m: dots,
       w: [96, 96, 0],
@@ -50,9 +51,9 @@ document.querySelectorAll("[data-logo-morph]").forEach((stage) => {
       w: [88, 88, 0],
     },
     E: {
-      b: [140, 150, ...L(140, 150, 305, 150), ...L(305, 150, 470, 150)],
-      g: [165, 225, ...L(165, 225, 165, 355), ...L(165, 355, 165, 490), 165, 535, 190, 560, 235, 560, ...L(235, 560, 470, 560)],
-      m: [165, 355, ...L(165, 355, 425, 355)],
+      b: [140, 166, 195, 153, 250, 150, 305, 150, 360, 150, 415, 153, 470, 166],
+      g: [165, 225, ...L(165, 225, 165, 355), ...L(165, 355, 165, 490), 165, 535, 190, 566, 235, 566, ...L(235, 566, 470, 566)],
+      m: [165, 357, 245, 343, 345, 343, 425, 357],
       w: [92, 92, 92],
     },
   };
@@ -66,8 +67,9 @@ document.querySelectorAll("[data-logo-morph]").forEach((stage) => {
   const ease = (value) => value * value * value * (value * (value * 6 - 15) + 10);
   const clamp = (value) => Math.min(1, Math.max(0, value));
   const get = (id) => stage.querySelector(`#${id}`);
-  const letters = [...stage.querySelectorAll(".hero-logo-morph__caption span")];
-
+  const wordmark = stage.querySelector("[data-wordmark]");
+  const meanings = stage.querySelector("[data-meanings]");
+  const meaningItems = [...stage.querySelectorAll("[data-morph-letter]")];
   function updatePaths(ids, points, width) {
     ids.forEach((id) => {
       get(id).setAttribute("d", pathData(points));
@@ -76,21 +78,58 @@ document.querySelectorAll("[data-logo-morph]").forEach((stage) => {
   }
 
   function draw(from, to, progress, direction = 1) {
-    const blue = ease(clamp(progress * 1.12));
-    const green = ease(clamp((progress - 0.1) * 1.12));
-    const middle = ease(clamp((progress - 0.2) * 1.25));
+    const blue = ease(clamp(progress));
+    const green = ease(clamp((progress - 0.035) / 0.965));
+    const middle = ease(clamp((progress - 0.07) / 0.93));
     updatePaths(["b", "b2", "b3"], lerp(from.b, to.b, blue), from.w[0] + (to.w[0] - from.w[0]) * blue);
     updatePaths(["g", "g2", "g3"], lerp(from.g, to.g, green), from.w[1] + (to.w[1] - from.w[1]) * green);
     updatePaths(["m", "m2", "m3"], lerp(from.m, to.m, middle), from.w[2] + (to.w[2] - from.w[2]) * middle);
     const pulse = Math.sin(Math.PI * progress);
-    get("root").setAttribute("transform", `translate(312 360) rotate(${(direction * 3 * pulse * pulse).toFixed(2)}) scale(${(1 + 0.035 * pulse).toFixed(3)}) translate(-312 -360)`);
+    get("root").setAttribute("transform", `translate(312 360) rotate(${(direction * 1.2 * pulse * pulse).toFixed(2)}) scale(${(1 + 0.015 * pulse).toFixed(3)}) translate(-312 -360)`);
+  }
+
+  function showOriginalBrand() {
+    get("s").style.opacity = "1";
+    wordmark.style.opacity = "1";
+    meanings.style.opacity = "0";
+    meaningItems.forEach((item) => item.classList.remove("is-active"));
+  }
+
+  function presentStage(from, to, progress, logoHold) {
+    const wordmarkOpacity = logoHold
+      ? 1
+      : from === "logo"
+        ? 1 - ease(clamp(progress / 0.52))
+        : to === "logo"
+          ? ease(clamp((progress - 0.55) / 0.45))
+          : 0;
+    get("s").style.opacity = "1";
+    wordmark.style.opacity = String(wordmarkOpacity);
+
+    const labelOpacity = logoHold
+      ? 0
+      : from === "logo"
+        ? ease(clamp((progress - 0.26) / 0.24))
+        : to === "logo"
+          ? 1 - ease(clamp((progress - 0.62) / 0.38))
+          : 1;
+    meanings.style.opacity = String(labelOpacity);
+
+    const activeLetter = from === "logo"
+      ? (progress > 0.26 ? to : "")
+      : to === "logo"
+        ? (progress < 0.8 ? from : "")
+        : (progress > 0.52 ? to : from);
+    meaningItems.forEach((item) => {
+      item.classList.toggle("is-active", item.dataset.morphLetter === activeLetter);
+    });
   }
 
   const sequence = ["logo", "T", "S", "E", "logo"];
-  const hold = 550;
-  const move = 1000;
+  const hold = 650;
+  const move = 900;
   const step = hold + move;
-  const total = step * 4 + hold;
+  const total = step * (sequence.length - 1);
   const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
   let elapsed = 0;
   let startedAt = 0;
@@ -110,16 +149,17 @@ document.querySelectorAll("[data-logo-morph]").forEach((stage) => {
     const time = (elapsed + timestamp - startedAt) % total;
     const index = Math.min(Math.floor(time / step), 3);
     const localTime = time - index * step;
-    const progress = localTime < hold ? 0 : (localTime - hold) / move;
-    draw(shapes[sequence[index]], shapes[sequence[index + 1]], progress, index % 2 ? -1 : 1);
-    const activeLetter = progress > 0.45 ? index : index - 1;
-    letters.forEach((letter, letterIndex) => letter.classList.toggle("on", letterIndex === activeLetter));
+    const inHold = localTime < hold;
+    const progress = inHold ? 0 : (localTime - hold) / move;
+    const from = sequence[index];
+    const to = sequence[index + 1];
+    draw(shapes[from], shapes[to], progress, index % 2 ? -1 : 1);
+    presentStage(from, to, progress, from === "logo" && inHold);
     animationFrame = requestAnimationFrame(frame);
   }
 
   function syncMotion() {
     const shouldAnimate = !motionPreference.matches && pageVisible && inViewport;
-    stage.classList.toggle("is-static", motionPreference.matches);
     if (shouldAnimate && animationFrame === null) {
       startedAt = performance.now();
       animationFrame = requestAnimationFrame(frame);
@@ -127,7 +167,7 @@ document.querySelectorAll("[data-logo-morph]").forEach((stage) => {
       stop();
       if (motionPreference.matches) {
         draw(shapes.logo, shapes.logo, 0);
-        letters.forEach((letter) => letter.classList.remove("on"));
+        showOriginalBrand();
       }
     }
   }

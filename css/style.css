@@ -371,42 +371,60 @@ input, textarea { font: inherit; }
 }
 .hero-copy { min-width: 0; }
 .hero-logo-morph {
-  display: grid;
-  justify-items: center;
-  gap: clamp(0.25rem, 1vw, 0.65rem);
+  position: relative;
   justify-self: end;
   width: min(100%, 360px);
   max-width: 100%;
+  aspect-ratio: 360 / 490;
 }
 .hero-logo-morph__svg {
-  display: block;
+  position: absolute;
+  inset: 0 0 auto;
   width: 100%;
   max-width: 100%;
-  height: auto;
+  height: 84.5%;
   overflow: visible;
+  pointer-events: none;
 }
-.hero-logo-morph__caption {
-  display: flex;
-  justify-content: center;
-  gap: clamp(1.25rem, 4vw, 1.75rem);
-  color: rgba(211, 222, 232, 0.55);
-  font-family: var(--font-display);
-  font-size: clamp(1.25rem, 3vw, 1.8rem);
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  line-height: 1;
+.hero-logo-morph__wordmark {
+  position: absolute;
+  inset: auto 0 0;
+  height: 15.5%;
+  background: url("../exaze-logo-light.png") center bottom / 100% auto no-repeat;
+  opacity: 1;
+  pointer-events: none;
 }
-.hero-logo-morph__caption span {
-  display: inline-block;
-  transition: color 350ms ease, transform 350ms ease;
+.hero-logo-morph__meanings {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: 15.5%;
+  opacity: 0;
+  pointer-events: none;
 }
-.hero-logo-morph__caption span.on {
-  color: #91cf78;
-  transform: translateY(-4px) scale(1.2);
+.hero-logo-morph__meaning {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.08rem;
+  color: rgba(232, 238, 242, 0.48);
+  transition: color 180ms ease;
 }
-.hero-logo-morph.is-static .hero-logo-morph__caption span {
-  color: rgba(211, 222, 232, 0.66);
-  transform: none;
+.hero-logo-morph__meaning b {
+  font: 700 clamp(1.1rem, 2.5vw, 1.5rem)/1 var(--font-display);
+  transition: color 180ms ease, transform 180ms ease;
+}
+.hero-logo-morph__meaning small {
+  font: 500 clamp(0.62rem, 1.2vw, 0.76rem)/1.2 var(--font-body);
+  white-space: nowrap;
+}
+.hero-logo-morph__meaning.is-active {
+  color: rgba(238, 243, 245, 0.92);
+}
+.hero-logo-morph__meaning.is-active b {
+  color: #a5d878;
+  transform: translateY(-1px);
 }
 @keyframes exaze-light-drift {
   from { transform: translate3d(-8px, 5px, 0); opacity: 0.78; }

@@ -28,7 +28,25 @@ Which statement BEST explains what happened?`,
       'MySQL automatically rolls back UPDATE statements without a WHERE clause.'
     ],
     correctAnswer: 'Every product stock decreased because UPDATE without WHERE affects all rows.',
-    explanation: 'UPDATE modifies every row that satisfies the WHERE clause. If no WHERE clause exists, every row satisfies the condition. MySQL does not automatically protect you from this mistake or roll back the transaction. This is one of the most common production incidents caused by human error.'
+    explanation: 'UPDATE modifies every row that satisfies the WHERE clause. If no WHERE clause exists, every row satisfies the condition. MySQL does not automatically protect you from this mistake or roll back the transaction. This is one of the most common production incidents caused by human error.',
+    optionNotes: {
+      'Only the first product stock was updated.': 'UPDATE does not default to the first row; it affects every row matched by its condition.',
+      'Only products with stock greater than 10 were updated.': 'No stock condition appears in the statement, so stock values do not limit which rows match.',
+      'Every product stock decreased because UPDATE without WHERE affects all rows.': 'Correct: with no WHERE clause, every row in products is updated.',
+      'MySQL automatically rolls back UPDATE statements without a WHERE clause.': 'MySQL does not treat a missing WHERE clause as an error or automatically undo the update.'
+    },
+    commonMistake: 'Assuming the database will protect a write query when its WHERE clause is missing.',
+    takeaway: 'An UPDATE without WHERE changes every row in the table.',
+    visual: {
+      type: 'diff',
+      title: 'The missing WHERE changed every row',
+      description: 'Subtracting one from stock with no filter applies the same update to every product.',
+      columns: ['id', 'product_name', 'stock'],
+      rowKey: 'id',
+      before: [{ id: 1, product_name: 'Laptop', stock: 5 }, { id: 2, product_name: 'Mouse', stock: 12 }],
+      after: [{ id: 1, product_name: 'Laptop', stock: 4 }, { id: 2, product_name: 'Mouse', stock: 11 }],
+      note: 'Preview the matching rows with the same WHERE condition before running a production UPDATE.'
+    }
   },
 
   {
@@ -61,7 +79,24 @@ Which department(s) are returned?`,
       'No departments'
     ],
     correctAnswer: 'HR',
-    explanation: "AVG() completely ignores NULL values—it does not treat them as 0. IT's average is (50000 + 70000) / 2 = 60000, which does not satisfy > 60000. HR's average is AVG(65000, NULL) = 65000 because NULL is skipped entirely. This catches developers who mistakenly calculate (65000 + 0) / 2."
+    explanation: "AVG() completely ignores NULL values—it does not treat them as 0. IT's average is (50000 + 70000) / 2 = 60000, which does not satisfy > 60000. HR's average is AVG(65000, NULL) = 65000 because NULL is skipped entirely. This catches developers who mistakenly calculate (65000 + 0) / 2.",
+    optionNotes: {
+      IT: 'IT averages exactly 60,000, and the condition is strictly greater than 60,000.',
+      HR: 'HR averages 65,000 because AVG ignores its NULL salary; 65,000 is greater than 60,000.',
+      'IT and HR': 'IT equals the threshold, so it fails the strict > comparison. Only HR passes.',
+      'No departments': 'HR has a non-NULL average above the threshold, so at least one department qualifies.'
+    },
+    commonMistake: 'Treating NULL as zero when calculating AVG.',
+    takeaway: 'AVG ignores NULL values, and > excludes a value equal to the threshold.',
+    visual: {
+      type: 'stepper',
+      title: 'Evaluate the HAVING condition by department',
+      steps: [
+        { label: 'IT · 2 salaries', context: 'Both IT salaries are present.', calculation: '(50,000 + 70,000) / 2 = 60,000', outcome: '60,000 is not greater than 60,000 · filtered out', keep: false },
+        { label: 'HR · one NULL salary', context: 'AVG skips the NULL row instead of counting it as zero.', calculation: 'AVG(65,000, NULL) = 65,000', outcome: '65,000 is greater than 60,000 · kept', keep: true },
+        { label: 'Sales · one salary', context: 'The only Sales value is below the threshold.', calculation: 'AVG(55,000) = 55,000', outcome: '55,000 is not greater than 60,000 · filtered out', keep: false }
+      ]
+    }
   },
 
   {
@@ -90,7 +125,23 @@ What is the MOST likely effect?`,
       'The query throws a syntax error.'
     ],
     correctAnswer: 'The query may return zero rows because NULL affects NOT IN comparisons.',
-    explanation: 'This is one of SQL\'s most famous interview questions. If the subquery used with NOT IN returns even one NULL value, every comparison becomes UNKNOWN, so no rows satisfy the condition. Using NOT EXISTS is usually the safer solution because it checks row existence rather than comparing values.'
+    explanation: 'This is one of SQL\'s most famous interview questions. If the subquery used with NOT IN returns even one NULL value, every comparison becomes UNKNOWN, so no rows satisfy the condition. Using NOT EXISTS is usually the safer solution because it checks row existence rather than comparing values.',
+    optionNotes: {
+      'The query works exactly as before.': 'A NULL in the subquery changes the result of non-matching NOT IN comparisons to UNKNOWN.',
+      'The query returns only users whose id is NULL.': 'NOT IN does not select NULL IDs here; the NULL inside the subquery prevents comparisons from becoming TRUE.',
+      'The query may return zero rows because NULL affects NOT IN comparisons.': 'Correct: NOT IN with a NULL candidate can evaluate to UNKNOWN, which WHERE filters out.',
+      'The query throws a syntax error.': 'The syntax is valid. The surprising result comes from SQL NULL logic, not parsing.'
+    },
+    commonMistake: 'Reading UNKNOWN as if it were FALSE or ignoring it; WHERE keeps only TRUE.',
+    takeaway: 'A NULL returned by a NOT IN subquery can make every unmatched comparison UNKNOWN.',
+    visual: {
+      type: 'truth-table',
+      title: 'Why NOT IN becomes UNKNOWN',
+      description: 'For a user id of 7 and subquery values 5 and NULL, NOT IN is equivalent to combining both not-equal comparisons.',
+      columns: ['Comparison', 'Result'],
+      rows: [['7 <> 5', 'TRUE'], ['7 <> NULL', 'UNKNOWN'], ['TRUE AND UNKNOWN', 'UNKNOWN'], ['WHERE keeps this row?', 'No — only TRUE passes']],
+      note: 'NOT EXISTS avoids this particular NULL comparison trap.'
+    }
   },
 
   {
@@ -113,7 +164,24 @@ Which queries are MOST likely to use the index efficiently? (Select all that app
       "WHERE created_at >= '2026-01-01' AND created_at < '2027-01-01'",
       "WHERE created_at BETWEEN '2026-06-01 00:00:00' AND '2026-06-01 23:59:59'"
     ],
-    explanation: 'Applying functions like YEAR() or DATE() directly to an indexed column makes the predicate non-sargable, preventing efficient index lookups. Range predicates preserve the original column values and allow MySQL to perform an index range scan.'
+    explanation: 'Applying functions like YEAR() or DATE() directly to an indexed column makes the predicate non-sargable, preventing efficient index lookups. Range predicates preserve the original column values and allow MySQL to perform an index range scan.',
+    optionNotes: {
+      "WHERE created_at >= '2026-01-01' AND created_at < '2027-01-01'": 'Keeps the indexed column bare and defines a searchable half-open date range.',
+      'WHERE YEAR(created_at) = 2026': 'Applying YEAR() to each value usually prevents a normal range lookup on the created_at index.',
+      "WHERE DATE(created_at) = '2026-06-01'": 'Applying DATE() to the indexed column can force MySQL to evaluate rows instead of seeking a range.',
+      "WHERE created_at BETWEEN '2026-06-01 00:00:00' AND '2026-06-01 23:59:59'": 'Keeps the indexed column bare and uses a bounded range, so the index can locate matching values.'
+    },
+    commonMistake: 'Wrapping an indexed column in a function and expecting an ordinary index range scan.',
+    takeaway: 'Filter indexed dates with range predicates instead of applying a function to the column.',
+    visual: {
+      type: 'index-range',
+      title: 'A range predicate can seek into the index',
+      description: 'The index stores created_at in order. A bare range narrows to a segment; YEAR(created_at) must be calculated for candidate rows.',
+      paths: [
+        { label: "created_at >= '2026-01-01' AND created_at < '2027-01-01'", kind: 'range', entries: [{ value: '2025-12-31', match: false }, { value: '2026-01-01', match: true }, { value: '2026-06-15', match: true }, { value: '2026-12-31', match: true }, { value: '2027-01-01', match: false }], note: 'Seek to the first boundary and read the matching range.' },
+        { label: 'YEAR(created_at) = 2026', kind: 'scan', entries: [{ value: '2025-12-31', match: false }, { value: '2026-01-01', match: true }, { value: '2026-06-15', match: true }, { value: '2026-12-31', match: true }, { value: '2027-01-01', match: false }], note: 'The function is evaluated for each candidate value; the ordinary index cannot directly seek by the transformed year.' }
+      ]
+    }
   },
 
   {
@@ -154,7 +222,26 @@ What is returned?`,
       '2'
     ],
     correctAnswer: '4',
-    explanation: 'LEFT JOIN does not preserve the number of rows from the left table when matching rows exist. Customer 1 appears twice because they have two orders, customer 2 appears once, and customer 3 appears once with NULL order columns. The joined result contains four rows, so COUNT(*) returns 4. Many developers incorrectly assume a LEFT JOIN always returns exactly the number of rows in the left table.'
+    explanation: 'LEFT JOIN does not preserve the number of rows from the left table when matching rows exist. Customer 1 appears twice because they have two orders, customer 2 appears once, and customer 3 appears once with NULL order columns. The joined result contains four rows, so COUNT(*) returns 4. Many developers incorrectly assume a LEFT JOIN always returns exactly the number of rows in the left table.',
+    optionNotes: {
+      '3': 'The unmatched third customer still contributes a NULL-extended row, and customer 1 contributes two matching rows.',
+      '4': 'Correct: customer 1 contributes two rows, customer 2 one, and customer 3 one preserved unmatched row.',
+      '5': 'There are three customers and three orders, but one order matches customer 1; the join output is four rows, not a sum of table sizes.',
+      '2': 'The join does not collapse a customer with multiple matching orders into one row.'
+    },
+    commonMistake: 'Assuming LEFT JOIN always produces exactly one output row per left-side row.',
+    takeaway: 'A one-to-many join repeats the left row once for each match; unmatched left rows still appear once.',
+    visual: {
+      type: 'join-map',
+      title: 'Count the rows produced by the join',
+      description: 'The join emits one row per match and one NULL-extended row when a left row has no match.',
+      leftLabel: 'Customers',
+      rightLabel: 'Orders',
+      leftRows: [{ id: 'c1', label: 'Customer 1' }, { id: 'c2', label: 'Customer 2' }, { id: 'c3', label: 'Customer 3' }],
+      rightRows: [{ id: 'o1', label: 'Order 1' }, { id: 'o2', label: 'Order 2' }, { id: 'o3', label: 'Order 3' }],
+      matches: [{ leftId: 'c1', rightId: 'o1' }, { leftId: 'c1', rightId: 'o2' }, { leftId: 'c2', rightId: 'o3' }],
+      note: 'Customer 1 appears twice in the joined result. Customer 3 stays once with NULL order columns.'
+    }
   },
   {
   id: 'mysql-6',
@@ -371,7 +458,7 @@ What is MOST likely to happen?`,
 
 {
   id: 'mysql-13',
-  type: 'code-output',
+  type: 'multi',
   difficulty: 'expert',
   category: 'Execution Order',
   prompt: `The finance team wants the top-selling department.
@@ -393,15 +480,37 @@ GROUP BY department
 ORDER BY total DESC
 LIMIT 1;
 
-Which department is returned?`,
+Which departments could legally be returned? (Select all that apply)`,
   options: [
     'IT',
     'HR',
     'Sales',
     'The query throws an error because ORDER BY uses an alias.'
   ],
-  correctAnswer: 'Sales',
+  correctAnswer: ['HR', 'Sales'],
   explanation: 'The logical order is GROUP BY → SUM() → ORDER BY → LIMIT. Totals become IT=300, HR=500, Sales=500. Because HR and Sales tie, LIMIT 1 returns one of them based on MySQL\'s ordering of ties, which is not guaranteed. However, with the data shown and no secondary ORDER BY, either HR or Sales could legally be returned. This query is nondeterministic. A secondary ORDER BY (for example, department) should be added.',
+  optionNotes: {
+    IT: 'IT totals 300, below the two departments tied at 500.',
+    HR: 'HR is tied for the highest total, so HR is a valid result; the prompt also lists Sales as another possible tied winner.',
+    Sales: 'Sales is tied with HR at 500. With no tie-breaker either can be returned, so this is one valid outcome.',
+    'The query throws an error because ORDER BY uses an alias.': 'MySQL allows the SELECT alias total in ORDER BY. The issue is nondeterministic tie ordering, not an error.'
+  },
+  commonMistake: 'Assuming LIMIT 1 makes tied rows deterministic when ORDER BY has no tie-breaker.',
+  takeaway: 'Use a secondary ORDER BY key when a LIMIT result must be deterministic.',
+  visual: {
+    type: 'pipeline',
+    title: 'Follow the grouped rows to LIMIT',
+    description: 'The query computes totals before sorting and limiting them.',
+    active: 'LIMIT',
+    steps: [
+      { label: 'FROM', detail: 'Read sales rows' },
+      { label: 'GROUP BY', detail: 'One row per department' },
+      { label: 'SUM', detail: 'IT 300 · HR 500 · Sales 500' },
+      { label: 'ORDER BY', detail: 'Largest total first' },
+      { label: 'LIMIT', detail: 'Take one tied top row' }
+    ],
+    note: 'Add department as a secondary sort key to choose a stable winner.'
+  },
 },
 
 {
@@ -487,7 +596,37 @@ Which employees are returned?`,
     'David only'
   ],
   correctAnswer: 'Bob and David',
-  explanation: 'The subquery is correlated because it references e1.department from the outer query. IT average is (50000 + 70000)/2 = 60000, so only Bob qualifies. HR average is (40000 + 60000)/2 = 50000, so only David qualifies.'
+  explanation: 'The subquery is correlated because it references e1.department from the outer query. IT average is (50000 + 70000)/2 = 60000, so only Bob qualifies. HR average is (40000 + 60000)/2 = 50000, so only David qualifies.',
+  optionNotes: {
+    'Alice and Carol': 'Both salaries are below their own department averages.',
+    'Bob and David': 'Correct: Bob is above IT average 60,000, and David is above HR average 50,000.',
+    'Bob only': 'Bob qualifies, but David also earns more than the HR average.',
+    'David only': 'David qualifies, but Bob also earns more than the IT average.'
+  },
+  commonMistake: 'Comparing every employee to one overall average instead of the average for that employee’s department.',
+  takeaway: 'A correlated subquery can calculate a different comparison value for each outer row.',
+  visual: {
+    type: 'stepper',
+    title: 'Re-run the department average for each employee',
+    description: 'The outer employee supplies a department to the inner AVG query. Compare that department average with the employee salary.',
+    steps: [
+      { label: 'Alice · IT', context: 'The inner query selects IT salaries.', calculation: 'IT average = (50,000 + 70,000) / 2 = 60,000 · 50,000 > 60,000 is false', outcome: 'Filtered out', keep: false },
+      { label: 'Bob · IT', context: 'The inner query runs for Bob’s IT department.', calculation: 'IT average = 60,000 · 70,000 > 60,000 is true', outcome: 'Kept', keep: true },
+      { label: 'Carol · HR', context: 'The department changes, so the inner AVG is recalculated for HR.', calculation: 'HR average = (40,000 + 60,000) / 2 = 50,000 · 40,000 > 50,000 is false', outcome: 'Filtered out', keep: false },
+      { label: 'David · HR', context: 'The inner query uses the same HR group for David.', calculation: 'HR average = 50,000 · 60,000 > 50,000 is true', outcome: 'Kept', keep: true }
+    ]
+  },
+  tryIt: {
+    label: 'Try the correlated query in SQL Visual Lab',
+    query: `SELECT e1.name, e1.salary
+FROM employees AS e1
+WHERE e1.salary > (
+  SELECT AVG(e2.salary)
+  FROM employees AS e2
+  WHERE e2.department_id = e1.department_id
+);`,
+    description: 'The lab opens with its Company sample schema and this query prefilled.'
+  }
 },
 
 {
@@ -642,7 +781,26 @@ Which employees are returned?`,
     'David only'
   ],
   correctAnswer: 'Bob and David',
-  explanation: 'The subquery is correlated because it references e1.department from the outer query. IT average is (50000 + 70000)/2 = 60000, so only Bob qualifies. HR average is (40000 + 60000)/2 = 50000, so only David qualifies.'
+  explanation: 'The subquery is correlated because it references e1.department from the outer query. IT average is (50000 + 70000)/2 = 60000, so only Bob qualifies. HR average is (40000 + 60000)/2 = 50000, so only David qualifies.',
+  optionNotes: {
+    'Alice and Carol': 'Both salaries are below their own department averages.',
+    'Bob and David': 'Correct: Bob is above IT average 60,000, and David is above HR average 50,000.',
+    'Bob only': 'Bob qualifies, but David also earns more than the HR average.',
+    'David only': 'David qualifies, but Bob also earns more than the IT average.'
+  },
+  commonMistake: 'Comparing every employee to one overall average instead of the average for that employee’s department.',
+  takeaway: 'A correlated subquery can calculate a different comparison value for each outer row.',
+  visual: {
+    type: 'stepper',
+    title: 'Re-run the department average for each employee',
+    description: 'The outer employee supplies a department to the inner AVG query. Compare that department average with the employee salary.',
+    steps: [
+      { label: 'Alice · IT', context: 'The inner query selects IT salaries.', calculation: 'IT average = (50,000 + 70,000) / 2 = 60,000 · 50,000 > 60,000 is false', outcome: 'Filtered out', keep: false },
+      { label: 'Bob · IT', context: 'The inner query runs for Bob’s IT department.', calculation: 'IT average = 60,000 · 70,000 > 60,000 is true', outcome: 'Kept', keep: true },
+      { label: 'Carol · HR', context: 'The department changes, so the inner AVG is recalculated for HR.', calculation: 'HR average = (40,000 + 60,000) / 2 = 50,000 · 40,000 > 50,000 is false', outcome: 'Filtered out', keep: false },
+      { label: 'David · HR', context: 'The inner query uses the same HR group for David.', calculation: 'HR average = 50,000 · 60,000 > 50,000 is true', outcome: 'Kept', keep: true }
+    ]
+  }
 },
 
 {
@@ -1028,7 +1186,25 @@ What will InnoDB most likely do?`,
     'Ignore the second update in each transaction and commit both partial changes.'
   ],
   correctAnswer: 'Detect the deadlock and roll back one transaction so the other can proceed.',
-  explanation: 'A has locked account 1 and waits for account 2, while B has locked account 2 and waits for account 1. InnoDB detects this cycle and chooses a victim transaction to roll back, returning a deadlock error to its client. Applications should retry the complete transaction, and code should acquire shared locks in a consistent order to reduce deadlocks.'
+  explanation: 'A has locked account 1 and waits for account 2, while B has locked account 2 and waits for account 1. InnoDB detects this cycle and chooses a victim transaction to roll back, returning a deadlock error to its client. Applications should retry the complete transaction, and code should acquire shared locks in a consistent order to reduce deadlocks.',
+  optionNotes: {
+    'Wait forever because neither transaction can release its first lock.': 'InnoDB detects deadlock cycles instead of waiting forever.',
+    'Automatically commit both transactions after resolving the lock cycle.': 'The database rolls back a victim; it does not commit both transactions.',
+    'Detect the deadlock and roll back one transaction so the other can proceed.': 'Correct: the victim receives an error and the other transaction can continue.',
+    'Ignore the second update in each transaction and commit both partial changes.': 'InnoDB does not silently skip conflicting statements and commit partial work as the deadlock resolution.'
+  },
+  commonMistake: 'Treating a deadlock as a permanent hang instead of an error that applications should handle and retry.',
+  takeaway: 'Deadlocks form a wait cycle; InnoDB aborts one transaction so the other can proceed.',
+  visual: {
+    type: 'timeline',
+    title: 'Two sessions form a lock cycle',
+    description: 'Each transaction holds one row lock and requests the row held by the other transaction.',
+    lanes: [
+      { name: 'Transaction A', events: [{ time: '1', label: 'Locks account 1' }, { time: '3', label: 'Requests account 2', status: 'wait' }] },
+      { name: 'Transaction B', events: [{ time: '2', label: 'Locks account 2' }, { time: '4', label: 'Requests account 1 · cycle detected', status: 'deadlock' }] }
+    ],
+    note: 'InnoDB rolls back one victim. Retry the entire transaction and acquire locks in a consistent order where possible.'
+  }
 },
 
 {

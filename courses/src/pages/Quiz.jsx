@@ -5,6 +5,8 @@ import { getModule, quizLoaders } from '../data/modules'
 import { getModuleProgress, saveModuleCheckpoint, saveModuleResult } from '../lib/progress'
 import OptionButton from '../components/OptionButton'
 import Icon from '../components/Icon'
+import QuizFeedback from '../components/QuizFeedback'
+import { getQuestionTakeaway } from '../lib/quiz-explanations'
 import DifficultyMeter from '../components/DifficultyMeter'
 import { getDifficultyRank, normalizeDifficulty } from '../lib/difficulty'
 import { appStorageKey } from '../lib/storage'
@@ -28,6 +30,17 @@ function isCorrectAnswer(q, given) {
   return given === q.correctAnswer
 }
 
+function getOptionNote(question, option, isCorrect, isSelected) {
+  const authoredNote = question.optionNotes?.[option]
+  if (authoredNote) return authoredNote
+  if (isCorrect && question.type === 'multi' && !isSelected) return 'This is a correct choice that was left unselected.'
+  if (isCorrect) return 'Correct answer.'
+  if (!isSelected) return ''
+  if (question.commonMistake) return `Common mistake: ${question.commonMistake}`
+  const takeaway = getQuestionTakeaway(question)
+  return takeaway ? `Key idea: ${takeaway}` : 'Compare this choice with the explanation below.'
+}
+
 function shuffleOptions(options) {
   const shuffled = [...options]
 
@@ -45,13 +58,26 @@ function prepareQuestions(quiz) {
     .sort((a, b) => getDifficultyRank(a.difficulty) - getDifficultyRank(b.difficulty))
     .map((question) => {
       const options = question.type === 'tf' ? ['True', 'False'] : question.options
+      const optionNotes = Array.isArray(question.optionNotes)
+        ? Object.fromEntries((options || []).map((option, index) => [option, question.optionNotes[index]]).filter(([, note]) => note))
+        : question.optionNotes
 
       return {
         ...question,
         difficulty: normalizeDifficulty(question.difficulty),
+        ...(optionNotes ? { optionNotes } : {}),
         ...(options ? { options: shuffleOptions(options) } : {}),
       }
     })
+}
+
+function refreshCheckpointQuestions(savedQuestions, currentQuestions) {
+  const currentById = new Map(currentQuestions.map((question) => [question.id, question]))
+  return savedQuestions.map((saved) => {
+    const current = currentById.get(saved.id)
+    if (!current) return saved
+    return { ...saved, ...current, options: saved.options || current.options }
+  })
 }
 
 export default function Quiz() {
@@ -83,8 +109,9 @@ export default function Quiz() {
 
       const checkpoint = getModuleProgress(moduleId)?.inProgress
       if (checkpoint?.questions?.length) {
-        setQuestions(checkpoint.questions)
-        setIndex(Math.min(checkpoint.index ?? 0, checkpoint.questions.length - 1))
+        const resumedQuestions = refreshCheckpointQuestions(checkpoint.questions, prepareQuestions(m.default))
+        setQuestions(resumedQuestions)
+        setIndex(Math.min(checkpoint.index ?? 0, resumedQuestions.length - 1))
         setScore(checkpoint.score ?? 0)
         setAnswers(checkpoint.answers ?? [])
         setSelected(checkpoint.selected ?? null)
@@ -230,6 +257,7 @@ export default function Quiz() {
   }
 
   const canSubmit = q.type === 'text' ? textValue.trim().length > 0 : q.type === 'multi' ? (selected || []).length > 0 : selected !== null
+  const feedbackCorrect = answers.at(-1)?.question.id === q.id && Boolean(answers.at(-1)?.correct)
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-12">
@@ -360,13 +388,16 @@ export default function Quiz() {
             </div>
           ) : q.type === 'tf' ? (
             <div className="grid grid-cols-2 gap-3">
-              {q.options.map((opt) => (
+              {q.options.map((opt, optionIndex) => (
                 <OptionButton
                   key={opt}
                   label={opt}
                   selected={selected === opt}
                   revealed={revealed}
                   isCorrect={opt === q.correctAnswer}
+                  note={revealed ? getOptionNote(q, opt, opt === q.correctAnswer, selected === opt) : ''}
+                  noteTone={opt === q.correctAnswer ? 'success' : 'help'}
+                  noteId={`quiz-${q.id}-option-${optionIndex}-note`}
                   disabled={revealed}
                   onClick={() => toggleOption(opt)}
                 />
@@ -374,33 +405,31 @@ export default function Quiz() {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {q.options.map((opt) => (
-                <OptionButton
-                  key={opt}
-                  label={opt}
-                  multi={q.type === 'multi'}
-                  selected={q.type === 'multi' ? (selected || []).includes(opt) : selected === opt}
-                  revealed={revealed}
-                  isCorrect={q.type === 'multi' ? q.correctAnswer.includes(opt) : opt === q.correctAnswer}
-                  disabled={revealed}
-                  onClick={() => toggleOption(opt)}
-                />
-              ))}
+              {q.options.map((opt, optionIndex) => {
+                const isCorrect = q.type === 'multi' ? q.correctAnswer.includes(opt) : opt === q.correctAnswer
+                const isSelected = q.type === 'multi' ? (selected || []).includes(opt) : selected === opt
+                return (
+                  <OptionButton
+                    key={opt}
+                    label={opt}
+                    multi={q.type === 'multi'}
+                    selected={isSelected}
+                    revealed={revealed}
+                    isCorrect={isCorrect}
+                    note={revealed ? getOptionNote(q, opt, isCorrect, isSelected) : ''}
+                    noteTone={isCorrect ? 'success' : 'help'}
+                    noteId={`quiz-${q.id}-option-${optionIndex}-note`}
+                    disabled={revealed}
+                    onClick={() => toggleOption(opt)}
+                  />
+                )
+              })}
             </div>
           )}
 
           <AnimatePresence>
-            {revealed && q.explanation && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-relaxed text-white/60"
-              >
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-white/40">Why</span>
-                {q.explanation}
-              </motion.div>
+            {revealed && (q.explanation || q.visual || q.commonMistake || q.takeaway) && (
+              <QuizFeedback key={`${q.id}-feedback`} question={q} correct={feedbackCorrect} />
             )}
           </AnimatePresence>
 

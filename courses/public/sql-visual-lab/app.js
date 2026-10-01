@@ -114,6 +114,8 @@ let querySchema = []
 let sandboxSchema = []
 
 const codeEditor = createEditor()
+const sharedQuery = readSharedQueryFromHash()
+if (sharedQuery) codeEditor.setValue(sharedQuery)
 configureTabs()
 configureActions()
 runButton.disabled = true
@@ -295,6 +297,16 @@ function createEditor() {
   }
 }
 
+function readSharedQueryFromHash() {
+  try {
+    const query = new URLSearchParams(window.location.hash.slice(1)).get('query')?.trim()
+    if (!query || query.length > 4000 || !/^\s*(?:SELECT|WITH)\b/i.test(query)) return ''
+    return query
+  } catch {
+    return ''
+  }
+}
+
 function configureTabs() {
   const tabButtons = [...document.querySelectorAll('[role="tab"]')]
   tabButtons.forEach((button, index) => {
@@ -462,7 +474,9 @@ async function loadDependencies() {
     retryButton.hidden = true
     renderSchemaTables()
     await refreshSandboxStatus()
-    setQueryMessage('Database ready. Try the example or choose a table to explore.', 'success')
+    setQueryMessage(sharedQuery
+      ? 'Question query loaded. Run it to see the result and open How it works for the steps.'
+      : 'Database ready. Try the example or choose a table to explore.', 'success')
 
     if (!parser) {
       setQueryMessage('The query parser did not load. Queries can still run, but the step-by-step view is unavailable.', 'warning')

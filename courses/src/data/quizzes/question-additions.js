@@ -1,5 +1,5 @@
 const buildQuestions = (moduleId, rows) =>
-  rows.map(([difficulty, category, prompt, correctAnswer, wrongAnswers, explanation], index) => ({
+  rows.map(([difficulty, category, prompt, correctAnswer, wrongAnswers, explanation, learning = {}], index) => ({
     id: `${moduleId}-extra-${index + 1}`,
     type: 'mcq',
     difficulty,
@@ -8,12 +8,34 @@ const buildQuestions = (moduleId, rows) =>
     options: [correctAnswer, ...wrongAnswers],
     correctAnswer,
     explanation,
+    ...learning,
   }))
 
 const questionRows = {
   'linux-commands': [
     ['medium', 'Permissions', 'A script is executable for its owner but not the group. Which permission bit adds group execution?', 'g+x', ['g+r', 'u+x', 'o+x'], 'The g class means group and x grants execute permission. chmod g+x adds that bit without changing other permission classes.'],
-    ['hard', 'Pipelines', 'Why can a pipeline hide a failure from its first command in default Bash settings?', 'Its status is normally the status of the last command', ['A pipe discards all exit statuses', 'Bash converts failures to zero', 'Only stderr-producing commands can fail'], 'Without pipefail, Bash normally reports the final command status. set -o pipefail makes the pipeline fail when any command in it fails.'],
+    ['hard', 'Pipelines', 'Why can a pipeline hide a failure from its first command in default Bash settings?', 'Its status is normally the status of the last command', ['A pipe discards all exit statuses', 'Bash converts failures to zero', 'Only stderr-producing commands can fail'], 'Without pipefail, Bash normally reports the final command status. set -o pipefail makes the pipeline fail when any command in it fails.', {
+      optionNotes: {
+        'Its status is normally the status of the last command': 'Correct: without pipefail, the pipeline status normally comes from its final command.',
+        'A pipe discards all exit statuses': 'The exit statuses exist; Bash simply reports the last command by default.',
+        'Bash converts failures to zero': 'A failed command still returns a nonzero status.',
+        'Only stderr-producing commands can fail': 'Success or failure is communicated by the exit status, not by whether stderr contains text.'
+      },
+      commonMistake: 'Assuming a successful final command means every earlier pipeline command succeeded.',
+      takeaway: 'Use set -o pipefail when any failed command in a pipeline should fail the pipeline.',
+      visual: {
+        type: 'pipeline',
+        title: 'The last command controls the default status',
+        description: 'The first command fails, but the final command succeeds.',
+        active: 'sort',
+        steps: [
+          { label: 'producer', detail: 'fails · status 1' },
+          { label: 'pipe', detail: 'passes output onward' },
+          { label: 'sort', detail: 'succeeds · status 0' }
+        ],
+        note: 'Without pipefail the pipeline reports 0; with pipefail it reports a failure from the pipeline.'
+      }
+    }],
   ],
   git: [
     ['medium', 'Remote Tracking', 'After fetching origin, which command replays local commits on the fetched main branch?', 'git rebase origin/main', ['git fetch origin/main', 'git reset --soft origin/main', 'git push origin/main'], 'Fetching updates remote-tracking references but does not change the current branch. Rebasing replays local commits on the selected base.'],

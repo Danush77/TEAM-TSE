@@ -6,7 +6,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import { performance } from 'node:perf_hooks'
-import { buildExecutionSteps } from '../engine.js'
+import { buildExecutionSteps, inspectQuery } from '../engine.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const labDir = path.resolve(here, '..')
@@ -243,6 +243,62 @@ test('builds dedicated window and recursive hierarchy steps', async () => {
   assert.equal(hierarchyPlan.available, true)
   assert.equal(hierarchyPlan.steps[0].kind, 'hierarchy')
   assert.deepEqual(hierarchyPlan.steps[0].levels.map((level) => level.rows.length), [3, 7, 2])
+})
+
+test('visualizes a correlated scalar subquery once for every outer employee', async () => {
+  const sql = `SELECT e1.name
+    FROM employees e1
+    WHERE salary > (
+      SELECT AVG(salary)
+      FROM employees e2
+      WHERE e1.department_id = e2.department_id
+    )`
+  const inspection = inspectQuery(sql, parser)
+  assert.equal(inspection.visualizationAvailable, true, inspection.reason)
+
+  const finalResult = await request('run', { sql })
+  const plan = await buildExecutionSteps(
+    parser,
+    inspection.ast,
+    async (statement) => request('run', { sql: statement }),
+    finalResult,
+  )
+
+  assert.equal(plan.available, true, plan.reason)
+  const subqueryStep = plan.steps.find((step) => step.kind === 'subquery')
+  const whereStep = plan.steps.find((step) => step.id === 'where')
+  assert.ok(subqueryStep, 'the plan should include a dedicated inner-query step')
+  assert.ok(whereStep, 'the plan should still show the outer WHERE filter')
+  assert.equal(subqueryStep.executions.length, 12)
+  assert.match(subqueryStep.executions[0].innerSql, /(?:\d+\s*=\s*`?e2`?\.`?department_id|`?e2`?\.`?department_id`?\s*=\s*\d+)/i)
+
+  const keptNames = subqueryStep.result.rows
+    .filter((row, index) => subqueryStep.executions[index].passed)
+    .map((row) => row[1])
+    .sort()
+  assert.deepEqual(Array.from(keptNames), Array.from(finalResult.rows, (row) => row[0]).sort())
+  assert.equal(subqueryStep.executions.every((execution) => typeof execution.innerSql === 'string' && execution.innerSql.length > 0), true)
+})
+
+test('visualizes uncorrelated scalar subqueries without mistaking IN subqueries for scalars', async () => {
+  const scalarSql = 'SELECT name FROM employees WHERE salary > (SELECT 0)'
+  const scalarInspection = inspectQuery(scalarSql, parser)
+  assert.equal(scalarInspection.visualizationAvailable, true, scalarInspection.reason)
+  const scalarResult = await request('run', { sql: scalarSql })
+  const scalarPlan = await buildExecutionSteps(
+    parser,
+    scalarInspection.ast,
+    async (statement) => request('run', { sql: statement }),
+    scalarResult,
+  )
+  assert.equal(scalarPlan.available, true, scalarPlan.reason)
+  const scalarStep = scalarPlan.steps.find((step) => step.kind === 'subquery')
+  assert.equal(scalarStep.executions[0].scalarValue, 0)
+  assert.equal(scalarStep.executions.length, 12)
+
+  const inInspection = inspectQuery('SELECT name FROM employees WHERE department_id IN (SELECT id FROM departments)', parser)
+  assert.equal(inInspection.visualizationAvailable, false)
+  assert.match(inInspection.reason, /single-column scalar subquery/i)
 })
 
 function createWorker() {

@@ -1027,6 +1027,7 @@ function showStep(index) {
   else if (step.kind === 'sandbox-transaction') renderSandboxTransactionVisual(detail, step)
   else if (step.kind === 'sandbox-error') renderSandboxErrorVisual(detail, step)
   else if (step.kind === 'join') renderJoinVisual(detail, step)
+  else if (step.kind === 'subquery') renderSubqueryVisual(detail, step)
   else if (step.kind === 'groups') renderGroupVisual(detail, step)
   else if (step.id === 'where') renderWhereVisual(detail, step)
   else if (step.id === 'having') renderHavingVisual(detail, step)
@@ -1081,6 +1082,48 @@ function renderHierarchyVisual(parent, step) {
     levels.append(card)
   })
   parent.append(levels)
+}
+
+function renderSubqueryVisual(parent, step) {
+  parent.append(createNode('h4', 'visual-subheading', 'Follow the inner query one outer row at a time'))
+  parent.append(createNode('p', 'visual-caption', 'A correlated subquery can read values from the current outer row. The inner result is calculated for that row, then the outer WHERE condition decides whether the row stays.'))
+  const executions = step.executions || []
+  const result = renderTable(step.result, {
+    rowLimit: 40,
+    numbered: false,
+    rowStatus: (index) => executions[index]?.passed,
+    statusKept: 'Kept by WHERE',
+    statusRemoved: 'Filtered out',
+    reason: 'The outer comparison is false or UNKNOWN',
+  })
+  parent.append(result)
+
+  const examples = executions.slice(0, 6)
+  if (examples.length) {
+    parent.append(createNode('h4', 'visual-subheading', 'Example inner-query runs'))
+    const list = createNode('div', 'subquery-execution-list')
+    examples.forEach((execution) => {
+      const details = createNode('details', 'subquery-execution')
+      details.open = execution.rowNumber === 1
+      const correlations = execution.referenceValues
+        .filter((item) => item.label.includes('.'))
+        .map((item) => `${item.label} = ${item.value === null ? 'NULL' : String(item.value)}`)
+      const summary = correlations.length
+        ? `Outer row ${execution.rowNumber} · ${correlations.join(', ')} · inner result ${execution.scalarValue === null ? 'NULL' : String(execution.scalarValue)}`
+        : `Outer row ${execution.rowNumber} · inner result ${execution.scalarValue === null ? 'NULL' : String(execution.scalarValue)}`
+      details.append(createNode('summary', '', summary))
+      details.append(createNode('p', 'visual-caption', `${execution.conditionText}.`))
+      const code = createNode('pre', 'step-sql-code')
+      code.append(createNode('code', '', execution.innerSql))
+      details.append(code)
+      list.append(details)
+    })
+    parent.append(list)
+  }
+
+  if (step.capped) {
+    parent.append(createNode('p', 'table-overflow-note', `To keep the explanation responsive, the inner query is expanded for the first ${executions.length} outer rows. The final query result is available separately.`))
+  }
 }
 
 function renderSandboxWriteVisual(parent, step) {

@@ -293,6 +293,11 @@ kbd { min-width: 17px; border: 1px solid #363f52; border-radius: 4px; padding: 1
 .visual-subheading { margin: 0 0 5px; font-size: 11px; font-weight: 650; }
 .visual-caption { margin: 0 0 9px; color: var(--lab-faint); font-size: 10px; }
 .visual-caption + .data-table-wrap { margin-top: 6px; }
+.subquery-execution-list { display: grid; gap: 6px; margin-top: 8px; }
+.subquery-execution { min-width: 0; border: 1px solid var(--lab-border); border-radius: 8px; padding: 8px 10px; background: rgb(255 255 255 / 1.5%); }
+.subquery-execution summary { color: var(--lab-muted); cursor: pointer; font-family: var(--font-code); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.subquery-execution[open] summary { margin-bottom: 8px; color: var(--lab-text); }
+.subquery-execution .step-sql-code { border: 1px solid var(--lab-border); border-radius: 6px; background: rgb(0 0 0 / 14%); }
 .join-comparison, .projection-comparison { display: grid; grid-template-columns: minmax(0,1fr) 28px minmax(0,1fr); align-items: center; gap: 8px; }
 .comparison-card, .join-output { min-width: 0; overflow: hidden; border: 1px solid var(--lab-border); border-radius: 9px; padding: 9px; background: rgb(255 255 255 / 1.5%); }
 .comparison-heading { margin-bottom: 8px; color: #c9d3e3; font-family: var(--font-code); font-size: 9px; font-weight: 600; }
